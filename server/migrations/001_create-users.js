@@ -1,5 +1,5 @@
 export const up = (pgm) => {
-    pgm.createType('ruolo', ['admin', 'contabilita', 'logisticaPRO', 'logistica' ,'runner', 'giurato', 'ospite', ''])
+    pgm.createType('ruolo', ['admin', 'contabilita', 'logistica_pro', 'logistica' ,'runner', 'giurato', 'ospite'])
 
     pgm.createTable('persone', {
         id : 'id',
