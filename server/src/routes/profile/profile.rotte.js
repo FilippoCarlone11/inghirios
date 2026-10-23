@@ -4,11 +4,11 @@ import { richiediAuth } from '../../middleware/authentication.js';
 import { richiediRuolo } from '../../middleware/authorization.js';
 import { ErroreHttp } from '../../middleware/errors.js';
 import { TIPO_GIURIA, ELENCO_RUOLI, RUOLI, TIPO_PARTECIPAZIONE } from '../../ruoli.js';
-import { elenco, crea, aggiungiAGiurato, deletePersona, elencoGiurati, elencoStaffLogistica } from './profile.query.js';
+import { elenco, crea, aggiungiAGiurato, deletePersona, elencoGiurati, elencoStaffLogistica, elencoRunners } from './profile.query.js';
 
 const router = Router();
 
-router.get('/', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res) => {
+router.get('/elenco-persone', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res) => {
   res.json(await elenco());
 });
 
@@ -78,6 +78,10 @@ router.get('/elenco-giurati', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (r
 
 router.get('/elenco-staff-logistica', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res) => {
   res.json(await elencoStaffLogistica());
+});
+
+router.get('/elenco-runners', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res) => {
+  res.json(await elencoRunners());
 });
 
 

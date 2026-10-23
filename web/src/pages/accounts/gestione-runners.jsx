@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../api.js';
+import { api } from '../../api.js';
 
-export default function Persone() {
+export default function GestioneRunners() {
   const [persone, setPersone] = useState([]);
   const [errore, setErrore] = useState('');
 
   useEffect(() => {
-    api('/persone')
+    api('/profile/elenco-runners')
       .then(setPersone)
       .catch((err) => setErrore(err.message));
   }, []);
@@ -17,7 +17,7 @@ export default function Persone() {
       <p>
         <Link to="/">← Indietro</Link>
       </p>
-      <h1>Persone</h1>
+      <h1>Runners</h1>
       {errore && <p role="alert">{errore}</p>}
       <table>
         <thead>

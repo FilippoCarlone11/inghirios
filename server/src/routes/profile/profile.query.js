@@ -8,7 +8,13 @@ export async function elenco() {
   return rows;
 }
 
-
+export async function elencoRunners() {
+  const { rows } = await pool.query(
+    `SELECT id, username, nome, cognome, email, telefono, ruolo, attivo
+     FROM persone WHERE ruolo = 'runner' ORDER BY cognome, nome`
+  );
+  return rows;
+}
 
 export async function elencoStaffLogistica() {
   const { rows } = await pool.query(
@@ -62,6 +68,8 @@ export async function aggiungiAGiurato({ id_utente, tipo_giuria, liberatoria_con
   );
   return rows[0];
 }
+
+
 
 export async function deletePersona(id) {
   const { rowCount } = await pool.query(

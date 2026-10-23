@@ -27,6 +27,9 @@ export default function Home() {
         <p>
           <Link to="/gestione-runners">Gestione runners</Link>
         </p>
+                <p>
+          <Link to="/gestione-biglietti">Gestione biglietti</Link>
+        </p>
         
         </>
         

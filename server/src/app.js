@@ -5,6 +5,7 @@ import { pool } from './db.js';
 import authRotte from './routes/auth/auth.rotte.js';
 import profileRotte from './routes/profile/profile.rotte.js';
 import ruoliRotte from './routes/ruoli/ruoli.rotte.js';
+import bigliettiRotte from './routes/biglietti/biglietti.rotte.js';
 import { nonTrovato, gestoreErrori } from './middleware/errors.js';
 
 export const app = express();
@@ -23,6 +24,7 @@ app.get('/api/health', async (req, res) => {
 app.use('/api/auth', authRotte);
 app.use('/api/profile', profileRotte);
 app.use('/api/ruoli', ruoliRotte);
+app.use('/api/biglietti', bigliettiRotte);
 
 // Questi due vanno SEMPRE in fondo
 app.use('/api', nonTrovato);
