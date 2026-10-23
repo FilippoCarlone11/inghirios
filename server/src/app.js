@@ -3,7 +3,7 @@ import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { pool } from './db.js';
 import authRotte from './routes/auth/auth.rotte.js';
-import personeRotte from './routes/profile/profile.rotte.js';
+import profileRotte from './routes/profile/profile.rotte.js';
 import ruoliRotte from './routes/ruoli/ruoli.rotte.js';
 import { nonTrovato, gestoreErrori } from './middleware/errors.js';
 
@@ -21,7 +21,7 @@ app.get('/api/health', async (req, res) => {
 });
 
 app.use('/api/auth', authRotte);
-app.use('/api/persone', personeRotte);
+app.use('/api/profile', profileRotte);
 app.use('/api/ruoli', ruoliRotte);
 
 // Questi due vanno SEMPRE in fondo

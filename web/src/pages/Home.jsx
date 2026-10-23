@@ -16,13 +16,16 @@ export default function Home() {
           <Link to="/crea-account">Creazione account</Link>
         </p>
         <p>
-          <Link to="/persone">Gestione staff logistica</Link>
+          <Link to="/crea-giurato">Creazione giurato</Link>
         </p>
         <p>
-          <Link to="/persone">Gestione giurati</Link>
+          <Link to="/gestione-staff-logistica">Gestione staff logistica</Link>
         </p>
         <p>
-          <Link to="/persone">Gestione runners</Link>
+          <Link to="/gestione-giurati">Gestione giurati</Link>
+        </p>
+        <p>
+          <Link to="/gestione-runners">Gestione runners</Link>
         </p>
         
         </>
