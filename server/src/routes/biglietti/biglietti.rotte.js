@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { richiediAuth } from '../../middleware/authentication.js';
 import { richiediRuolo } from '../../middleware/authorization.js';
 import { ErroreHttp } from '../../middleware/errors.js';
-import { elencoBiglietti, aggiungiBiglietto } from './biglietti.query.js';
+import { elencoBiglietti, aggiungiBiglietto, elencoBigliettiDaPerCagliari  } from './biglietti.query.js';
 import { RUOLI } from '../../ruoli.js';
 
 const router = Router();
@@ -11,6 +11,10 @@ const router = Router();
 
 router.get('/elenco-biglietti', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res) => {
   res.json(await elencoBiglietti());
+});
+
+router.get('/elenco-biglietti-da-per-cagliari', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res) => {
+  res.json(await elencoBigliettiDaPerCagliari());
 });
 
 

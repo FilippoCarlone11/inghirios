@@ -69,6 +69,19 @@ export async function aggiungiAGiurato({ id_utente, tipo_giuria, liberatoria_con
   return rows[0];
 }
 
+export async function updateLiberatoria({liberatoria_consegnata, id}){
+  const{rows} = await pool.query(
+   `
+      UPDATE giurati 
+      SET liberatoria_consegnata = $1 
+      WHERE id_utente = $2 
+      RETURNING *;
+    `,
+    [liberatoria_consegnata, id]
+  )
+  return rows;
+
+}
 
 
 export async function deletePersona(id) {

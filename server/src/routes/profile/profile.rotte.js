@@ -4,7 +4,7 @@ import { richiediAuth } from '../../middleware/authentication.js';
 import { richiediRuolo } from '../../middleware/authorization.js';
 import { ErroreHttp } from '../../middleware/errors.js';
 import { TIPO_GIURIA, ELENCO_RUOLI, RUOLI, TIPO_PARTECIPAZIONE } from '../../ruoli.js';
-import { elenco, crea, aggiungiAGiurato, deletePersona, elencoGiurati, elencoStaffLogistica, elencoRunners } from './profile.query.js';
+import { elenco, crea, aggiungiAGiurato, deletePersona, elencoGiurati, elencoStaffLogistica, elencoRunners, updateLiberatoria } from './profile.query.js';
 
 const router = Router();
 
@@ -116,4 +116,21 @@ async function creaPersonaBase(dati) {
     throw err; // Rilancia altri errori
   }
 }
+
+router.put('/modifica-liberatoria/:id', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const { liberatoria_consegnata } = req.body;
+    
+    const rows = await updateLiberatoria({ liberatoria_consegnata, id });
+
+    if (rows.length === 0) {
+      throw new ErroreHttp(404, 'Giurato non trovato');
+    }
+
+    res.status(200).json(rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
 export default router;

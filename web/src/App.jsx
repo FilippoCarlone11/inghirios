@@ -9,6 +9,9 @@ import GestioneGiurati from './pages/accounts/gestione-giurati.jsx'
 import GestioneStaffLogistica from './pages/accounts/gestione-staff-logistica.jsx'
 import GestioneRunners from './pages/accounts/gestione-runners.jsx'
 import GestioneBiglietti from './pages/biglietti/gestione-biglietti.jsx'
+import GestioneTransfer from './pages/transfer/gestione-transfer.jsx'
+import GestioneLiberatorie from './pages/accounts/gestione-liberatorie.jsx';
+
 
 export default function App() {
   return (
@@ -26,6 +29,8 @@ export default function App() {
         <Route path="/gestione-staff-logistica" element={<GestioneStaffLogistica />} />
         <Route path="/gestione-runners" element={<GestioneRunners />} />
         <Route path="/gestione-biglietti" element={<GestioneBiglietti />} />
+        <Route path="/gestione-transfer" element={<GestioneTransfer />} />
+        <Route path="/gestione-liberatorie" element={<GestioneLiberatorie />} />
       </Route>
     </Routes>
   );

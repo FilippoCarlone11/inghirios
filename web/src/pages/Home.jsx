@@ -27,8 +27,14 @@ export default function Home() {
         <p>
           <Link to="/gestione-runners">Gestione runners</Link>
         </p>
-                <p>
+        <p>
           <Link to="/gestione-biglietti">Gestione biglietti</Link>
+        </p>
+        <p>
+          <Link to="/gestione-transfer">Gestione transfer</Link>
+        </p>
+        <p>
+          <Link to="/gestione-liberatorie">Gestione liberatorie</Link>
         </p>
         
         </>

@@ -15,7 +15,28 @@ const COMPAGNIE = [
   'altra_compagnia', 'nessuna'
 ];
 
-// 1. Aggiunti i nuovi campi nello stato iniziale vuoto
+// Lista dei codici per i menu a tendina
+const CODICI_LUOGHI = [
+  { codice: 'FCO', nome: 'Roma Fiumicino' },
+  { codice: 'CIA', nome: 'Roma Ciampino' },
+  { codice: 'MXP', nome: 'Milano Malpensa' },
+  { codice: 'LIN', nome: 'Milano Linate' },
+  { codice: 'BGY', nome: 'Bergamo Orio al Serio' },
+  { codice: 'TRN', nome: 'Torino Caselle' },
+  { codice: 'VCE', nome: 'Venezia Marco Polo' },
+  { codice: 'BLQ', nome: 'Bologna Guglielmo Marconi' },
+  { codice: 'NAP', nome: 'Napoli Capodichino' },
+  { codice: 'CTA', nome: 'Catania Fontanarossa' },
+  { codice: 'PMO', nome: 'Palermo Punta Raisi' },
+  { codice: 'BRI', nome: 'Bari Palese' },
+  { codice: 'CAG', nome: 'Cagliari Elmas' },
+  { codice: 'PSA', nome: 'Pisa San Giusto' },
+  { codice: 'FLR', nome: 'Firenze Peretola' },
+  { codice: 'VRN', nome: 'Verona Villafranca' },
+  { codice: 'SUF', nome: 'Lamezia Terme' },
+  { codice: 'OLB', nome: 'Olbia Costa Smeralda' }
+];
+
 const FORM_VUOTO = {
   id_utente: '',
   codice_prenotazione: '',
@@ -28,9 +49,7 @@ const FORM_VUOTO = {
   partenza: '',
   arrivo: '',
   orario_partenza_previsto: '',
-  orario_arrivo_previsto: '',
-  orario_partenza_confermato: '',
-  orario_arrivo_confermato: ''
+  orario_arrivo_previsto: ''
 };
 
 export default function GestioneBiglietti() {
@@ -42,7 +61,6 @@ export default function GestioneBiglietti() {
     const [inInvio, setInInvio] = useState(false);
     const [caricamento, setCaricamento] = useState(true);
 
-    // Carica i biglietti all'avvio
     useEffect(() => {
         caricaBiglietti();
         caricaPersone();
@@ -95,7 +113,6 @@ export default function GestioneBiglietti() {
             });
             setSuccesso(`Biglietto creato con ID: ${creato.id}`);
             setDati(FORM_VUOTO);
-            // Aggiunge il nuovo biglietto in cima alla lista senza ricaricare la pagina
             setBiglietti((prev) => [creato, ...prev]); 
         } catch (err) {
             setErrore(err.message);
@@ -104,7 +121,6 @@ export default function GestioneBiglietti() {
         }
   }
 
-  // Helper per formattare gli ENUM
   const formattaEnum = (testo) => testo?.replace(/_/g, ' ').toUpperCase() || '';
 
   return (
@@ -131,15 +147,29 @@ export default function GestioneBiglietti() {
                 </select>
             </label>
 
-            {/* 2. NUOVI CAMPI TRATTA */}
             <div style={{ display: 'flex', gap: '10px' }}>
               <label style={{ flex: 1 }}>
                 Da (Partenza)
-                <input name="partenza" type="text" value={dati.partenza} onChange={aggiorna} required placeholder="Es. Roma" />
+                <select name="partenza" value={dati.partenza} onChange={aggiorna} required>
+                  <option value="">Scegli partenza...</option>
+                  {CODICI_LUOGHI.map((luogo) => (
+                    <option key={luogo.codice} value={luogo.codice}>
+                      {luogo.codice} - {luogo.nome}
+                    </option>
+                  ))}
+                </select>
               </label>
+              
               <label style={{ flex: 1 }}>
                 A (Arrivo)
-                <input name="arrivo" type="text" value={dati.arrivo} onChange={aggiorna} required placeholder="Es. Milano" />
+                <select name="arrivo" value={dati.arrivo} onChange={aggiorna} required>
+                  <option value="">Scegli arrivo...</option>
+                  {CODICI_LUOGHI.map((luogo) => (
+                    <option key={luogo.codice} value={luogo.codice}>
+                      {luogo.codice} - {luogo.nome}
+                    </option>
+                  ))}
+                </select>
               </label>
             </div>
 
@@ -174,7 +204,6 @@ export default function GestioneBiglietti() {
               </select>
             </label>
 
-            {/* 3. NUOVI CAMPI ORARI */}
             <fieldset style={{ margin: '15px 0', padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }}>
               <legend style={{ padding: '0 5px', fontWeight: 'bold' }}>Orari Previsti</legend>
               <label>
@@ -184,18 +213,6 @@ export default function GestioneBiglietti() {
               <label>
                 Arrivo previsto:
                 <input name="orario_arrivo_previsto" type="datetime-local" value={dati.orario_arrivo_previsto} onChange={aggiorna} />
-              </label>
-            </fieldset>
-
-            <fieldset style={{ margin: '15px 0', padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }}>
-              <legend style={{ padding: '0 5px', fontWeight: 'bold' }}>Orari Effettivi / Confermati</legend>
-              <label>
-                Partenza confermata:
-                <input name="orario_partenza_confermato" type="datetime-local" value={dati.orario_partenza_confermato} onChange={aggiorna} />
-              </label>
-              <label>
-                Arrivo confermato:
-                <input name="orario_arrivo_confermato" type="datetime-local" value={dati.orario_arrivo_confermato} onChange={aggiorna} />
               </label>
             </fieldset>
 
@@ -232,7 +249,7 @@ export default function GestioneBiglietti() {
                   <th>ID</th>
                   <th>Nome</th>
                   <th>Cognome</th>
-                  <th>Tratta</th> {/* Aggiunta colonna tratta */}
+                  <th>Tratta</th>
                   <th>Compagnia</th>
                   <th>Codici (Pren. / Volo / Treno)</th>
                   <th>Stato</th>
@@ -247,13 +264,12 @@ export default function GestioneBiglietti() {
                     <td>{b.nome}</td>
                     <td>{b.cognome}</td>
                     
-                    {/* Visualizziamo visivamente la tratta (Es: Roma -> Milano) */}
                     <td><strong>{b.partenza || '?'}</strong> &rarr; {b.arrivo || '?'}</td>
                     
                     <td>{formattaEnum(b.compagnia)}</td>
                     <td>
                       {[b.codice_prenotazione, b.codice_volo, b.codice_treno]
-                        .filter(Boolean) // Filtra i codici null/vuoti
+                        .filter(Boolean)
                         .join(' / ') || '-'}
                     </td>
                     <td>{formattaEnum(b.stato)}</td>
