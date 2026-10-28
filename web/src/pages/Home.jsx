@@ -36,6 +36,9 @@ export default function Home() {
         <p>
           <Link to="/gestione-liberatorie">Gestione liberatorie</Link>
         </p>
+        <p>
+          <Link to="/gestione-alloggi">Gestione alloggi</Link>
+        </p>
         
         </>
         

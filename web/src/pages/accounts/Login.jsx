@@ -25,33 +25,37 @@ export default function Login() {
   }
 
   return (
-    <main>
-      <h1>inghirios</h1>
-      <form onSubmit={invia}>
-        <label>
-          Username
-          <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            autoComplete="username"
-            required
-          />
-        </label>
-        <label>
-          Password
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-            required
-          />
-        </label>
-        {errore && <p role="alert">{errore}</p>}
-        <button type="submit" disabled={inInvio}>
-          {inInvio ? 'Accesso...' : 'Accedi'}
-        </button>
-      </form>
-    </main>
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: 'var(--bg-color)' }}>
+      <div className="card" style={{ width: '100%', maxWidth: '400px' }}>
+        <h1 style={{ textAlign: 'center', marginBottom: '2rem' }}>Accedi a Inghirios</h1>
+        <form onSubmit={invia}>
+          <label>
+            Username
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              autoComplete="username"
+              required
+            />
+          </label>
+          <label>
+            Password
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              required
+            />
+          </label>
+          
+          {errore && <p style={{ color: 'red', marginTop: '1rem' }} role="alert">{errore}</p>}
+          
+          <button type="submit" disabled={inInvio} style={{ width: '100%', marginTop: '1.5rem' }}>
+            {inInvio ? 'Accesso...' : 'Accedi'}
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }

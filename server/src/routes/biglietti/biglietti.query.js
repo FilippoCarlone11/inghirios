@@ -72,3 +72,11 @@ export async function elencoBigliettiDaPerCagliari() {
   const { rows } = await pool.query(query);
   return rows;
 }
+
+export async function eliminaBiglietto(id) {
+  const query = `DELETE FROM biglietti WHERE id = $1;`;
+  const valori = [id];
+  const { rowCount } = await pool.query(query, valori);
+  
+  return rowCount > 0;
+}

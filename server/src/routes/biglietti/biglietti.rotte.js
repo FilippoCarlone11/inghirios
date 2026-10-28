@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { richiediAuth } from '../../middleware/authentication.js';
 import { richiediRuolo } from '../../middleware/authorization.js';
 import { ErroreHttp } from '../../middleware/errors.js';
-import { elencoBiglietti, aggiungiBiglietto, elencoBigliettiDaPerCagliari  } from './biglietti.query.js';
+import { elencoBiglietti, aggiungiBiglietto, elencoBigliettiDaPerCagliari, eliminaBiglietto  } from './biglietti.query.js';
 import { RUOLI } from '../../ruoli.js';
 
 const router = Router();
@@ -18,8 +18,6 @@ router.get('/elenco-biglietti-da-per-cagliari', richiediAuth, richiediRuolo(RUOL
 });
 
 
-// Assicurati di importare la funzione del DB corretta, ad esempio aggiungiBiglietto
-// import { aggiungiBiglietto } from '../../models/biglietti.model.js';
 router.post('/aggiungi-biglietto', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res, next) => {
   try {
     const {
@@ -31,7 +29,7 @@ router.post('/aggiungi-biglietto', richiediAuth, richiediRuolo(RUOLI.ADMIN), asy
       stato,
       costo,
       da_rimborsare_ospite,
-      // NUOVI CAMPI:
+
       partenza,
       arrivo,
       orario_partenza_previsto,
@@ -70,5 +68,27 @@ router.post('/aggiungi-biglietto', richiediAuth, richiediRuolo(RUOLI.ADMIN), asy
     next(err); 
   }
 });
+
+router.delete('/elimina-biglietto/:id', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res, next) => {
+  try {
+    const id_biglietto = Number(req.params.id);
+    
+    const bigliettoEliminato = await eliminaBiglietto(id_biglietto);
+
+    if (!bigliettoEliminato) {
+      throw new ErroreHttp(404, 'Biglietto non trovato');
+    }
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'Biglietto eliminato con successo' 
+    });
+
+  } catch (err) {
+    console.error("ERRORE ELIMINAZIONE BIGLIETTO:", err); 
+    next(err); 
+  }
+});
+
 
 export default router;

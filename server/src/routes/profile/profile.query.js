@@ -107,3 +107,37 @@ export async function elencoGiurati(){
   return rows;
 
 }
+
+export async function creaAccompagnatore({ nome, cognome, id_accompagnatore }){
+  const {rows} = await pool.query(
+    'INSERT INTO accompagnatori (id_accompagnatore, nome, cognome) VALUES ($1, $2, $3) RETURNING *',
+    [id_accompagnatore, nome, cognome]
+  );
+  return rows[0];
+}
+
+export async function numeroAccompagnatori({id_utente }){
+  const {rows} = await pool.query(
+    'SELECT COUNT(*) FROM accompagnatori WHERE id_accompagnatore = $1 RETURNING *',
+    [id_utente]
+  );
+  return rows[0];
+}
+
+
+export async function elencoAccompagnatori() {
+  const query = `
+    SELECT 
+      a.id AS id_accompagnatore,
+      a.nome AS nome_accompagnatore, 
+      a.cognome AS cognome_accompagnatore, 
+      p.nome AS nome_persona, 
+      p.cognome AS cognome_persona 
+    FROM accompagnatori a 
+    JOIN persone p ON a.id_accompagnatore = p.id
+  `;
+  
+  const { rows } = await pool.query(query);
+  
+  return rows;
+}

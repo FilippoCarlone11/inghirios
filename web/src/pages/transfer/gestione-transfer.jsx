@@ -1,12 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { api } from '../../api.js';
 
-// Helper per trasformare una data del DB nel formato richiesto dall'input datetime-local (YYYY-MM-DDTHH:mm)
 function formattaPerInput(dataISO) {
   if (!dataISO) return '';
   const d = new Date(dataISO);
-  // Sottrae il fuso orario per avere l'orario esatto nel datetime-local
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   return d.toISOString().slice(0, 16);
 }
@@ -14,26 +11,22 @@ function formattaPerInput(dataISO) {
 export default function GestioneTransfer() {
   const [biglietti, setBiglietti] = useState([]);
   const [transfers, setTransfers] = useState([]);
-  const [persone, setPersone] = useState([]); // Per la lista dei runner
+  const [persone, setPersone] = useState([]); 
   const [caricamento, setCaricamento] = useState(true);
 
-  // Stato per il form (Aggiunta/Modifica)
   const [modaleAperto, setModaleAperto] = useState(false);
   const [inInvio, setInInvio] = useState(false);
   const [form, setForm] = useState(null);
 
-  useEffect(() => {
-    caricaTutto();
-  }, []);
+  useEffect(() => { caricaTutto(); }, []);
 
   async function caricaTutto() {
     setCaricamento(true);
     try {
-      // Eseguiamo tutte le chiamate in parallelo
       const [resBiglietti, resTransfers, resPersone] = await Promise.all([
         api('/biglietti/elenco-biglietti-da-per-cagliari'),
         api('/transfer/elenco-transfer'),
-        api('/profile/elenco-persone') // Assumendo esista per avere i nomi dei runner
+        api('/profile/elenco-persone') 
       ]);
       setBiglietti(resBiglietti);
       setTransfers(resTransfers);
@@ -45,29 +38,23 @@ export default function GestioneTransfer() {
     }
   }
 
-  // INCROCIO E ORDINAMENTO DATI
   const datiTabella = biglietti.map((biglietto) => {
-    // Cerco se esiste già un transfer associato a questo biglietto
     const transferAssociato = transfers.find((t) => t.id_biglietto === biglietto.id);
-    
-    // Per l'ordinamento: uso l'orario di pickup, altrimenti l'orario di arrivo/partenza del volo
     const orarioRiferimento = transferAssociato?.orario_pickup 
       || biglietto.orario_arrivo_previsto 
       || biglietto.orario_partenza_previsto;
 
     return {
       ...biglietto,
-      transfer: transferAssociato || null, // Se null, il transfer è da creare
+      transfer: transferAssociato || null,
       orarioRiferimento
     };
-  }).sort((a, b) => new Date(a.orarioRiferimento) - new Date(b.orarioRiferimento)); // Ordine cronologico
+  }).sort((a, b) => new Date(a.orarioRiferimento) - new Date(b.orarioRiferimento));
 
-
-  // GESTIONE FORM
   function apriGestioneTransfer(riga) {
     const t = riga.transfer;
     setForm({
-      id_transfer: t ? t.id : '', // Se c'è l'ID, faremo una PUT/Modifica
+      id_transfer: t ? t.id : '', 
       id_biglietto: riga.id,
       id_persona_da_trasferire: riga.id_persona,
       id_runner: t?.id_runner || '',
@@ -87,9 +74,7 @@ export default function GestioneTransfer() {
   async function salvaTransfer(e) {
     e.preventDefault();
     setInInvio(true);
-
     try {
-      // Se il form ha un id_transfer, significa che lo stiamo modificando, altrimenti lo stiamo creando
       const endpoint = form.id_transfer ? `/transfer/modifica-transfer/${form.id_transfer}` : '/transfer/aggiungi-transfer';
       const metodo = form.id_transfer ? 'PUT' : 'POST';
 
@@ -102,13 +87,11 @@ export default function GestioneTransfer() {
         }
       });
 
-      // Aggiorniamo la lista dei transfer senza ricaricare la pagina
       if (form.id_transfer) {
         setTransfers(prev => prev.map(t => t.id === form.id_transfer ? transferSalvato : t));
       } else {
         setTransfers(prev => [...prev, transferSalvato]);
       }
-      
       setModaleAperto(false);
     } catch (err) {
       alert("Errore salvataggio: " + err.message);
@@ -118,82 +101,74 @@ export default function GestioneTransfer() {
   }
 
   return (
-    <main style={{ padding: '1rem' }}>
-      <p><Link to="/">← Indietro</Link></p>
-      <h1>Tabellone Arrivi/Partenze e Transfer (Cagliari)</h1>
-
-      {caricamento ? (
-        <p>Caricamento dati in corso...</p>
-      ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '900px' }}>
-            <thead style={{ backgroundColor: '#f4f4f4' }}>
-              <tr>
-                <th style={{ padding: '10px', borderBottom: '2px solid #ccc' }}>Ospite</th>
-                <th style={{ padding: '10px', borderBottom: '2px solid #ccc' }}>Tratta</th>
-                <th style={{ padding: '10px', borderBottom: '2px solid #ccc' }}>Orario Volo/Treno</th>
-                <th style={{ padding: '10px', borderBottom: '2px solid #ccc' }}>Orario Pickup</th>
-                <th style={{ padding: '10px', borderBottom: '2px solid #ccc' }}>Pickup &rarr; Destinazione</th>
-                <th style={{ padding: '10px', borderBottom: '2px solid #ccc' }}>Runner Assegnato</th>
-                <th style={{ padding: '10px', borderBottom: '2px solid #ccc' }}>Azioni</th>
-              </tr>
-            </thead>
-            <tbody>
-              {datiTabella.map((riga) => (
-                <tr key={riga.id} style={{ borderBottom: '1px solid #eee' }}>
-                  
-                  {/* DATI BIGLIETTO */}
-                  <td style={{ padding: '10px' }}><strong>{riga.nome} {riga.cognome}</strong></td>
-                  <td style={{ padding: '10px' }}>{riga.partenza} &rarr; {riga.arrivo}</td>
-                  <td style={{ padding: '10px', color: '#555' }}>
-                    {new Date(riga.orarioRiferimento).toLocaleString('it-IT', { 
-                      day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' 
-                    })}
-                  </td>
-                  
-                  {/* DATI TRANSFER */}
-                  <td style={{ padding: '10px', fontWeight: 'bold' }}>
-                    {riga.transfer?.orario_pickup 
-                      ? new Date(riga.transfer.orario_pickup).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) 
-                      : <span style={{ color: 'red' }}>Da definire</span>}
-                  </td>
-                  <td style={{ padding: '10px' }}>
-                    {riga.transfer?.luogo_pickup || '?'} &rarr; {riga.transfer?.luogo_destinazione || '?'}
-                  </td>
-                  <td style={{ padding: '10px' }}>
-                    {riga.transfer?.nome_runner ? (
-                      <span style={{ color: 'green', fontWeight: 'bold' }}>
-                        {riga.transfer.nome_runner} {riga.transfer.cognome_runner}
-                      </span>
-                    ) : (
-                      <span style={{ color: '#aaa', fontStyle: 'italic' }}>Nessuno</span>
-                    )}
-                  </td>
-                  
-                  {/* AZIONI */}
-                  <td style={{ padding: '10px' }}>
-                    <button onClick={() => apriGestioneTransfer(riga)}>
-                      {riga.transfer ? 'Modifica' : 'Assegna Runner'}
-                    </button>
-                  </td>
+    <>
+      <div className="card">
+        <h1>Tabellone Arrivi/Partenze e Transfer (Cagliari)</h1>
+        
+        {caricamento ? (
+          <p>Caricamento dati in corso...</p>
+        ) : (
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Ospite</th>
+                  <th>Tratta</th>
+                  <th>Orario Volo/Treno</th>
+                  <th>Orario Pickup</th>
+                  <th>Pickup &rarr; Destinazione</th>
+                  <th>Runner Assegnato</th>
+                  <th>Azioni</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody>
+                {datiTabella.map((riga) => (
+                  <tr key={riga.id}>
+                    <td><strong>{riga.nome} {riga.cognome}</strong></td>
+                    <td>{riga.partenza} &rarr; {riga.arrivo}</td>
+                    <td style={{ color: 'var(--text-muted)' }}>
+                      {new Date(riga.orarioRiferimento).toLocaleString('it-IT', { 
+                        day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' 
+                      })}
+                    </td>
+                    <td style={{ fontWeight: 'bold' }}>
+                      {riga.transfer?.orario_pickup 
+                        ? new Date(riga.transfer.orario_pickup).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) 
+                        : <span style={{ color: '#ef4444' }}>Da definire</span>}
+                    </td>
+                    <td>
+                      {riga.transfer?.luogo_pickup || '?'} &rarr; {riga.transfer?.luogo_destinazione || '?'}
+                    </td>
+                    <td>
+                      {riga.transfer?.nome_runner ? (
+                        <span style={{ color: '#10b981', fontWeight: 'bold' }}>
+                          {riga.transfer.nome_runner} {riga.transfer.cognome_runner}
+                        </span>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>Nessuno</span>
+                      )}
+                    </td>
+                    <td>
+                      <button className="btn-secondary" onClick={() => apriGestioneTransfer(riga)}>
+                        {riga.transfer ? 'Modifica' : 'Assegna Runner'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
-      {/* MODALE DI AGGIUNTA / MODIFICA TRANSFER */}
       {modaleAperto && form && (
-        <div style={stileModale}>
-          <div style={stileContenutoModale}>
-            <h2>{form.id_transfer ? 'Modifica Transfer' : 'Crea Transfer e Assegna Runner'}</h2>
-            
-            <form onSubmit={salvaTransfer} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2 style={{marginTop: 0}}>{form.id_transfer ? 'Modifica Transfer' : 'Crea Transfer e Assegna Runner'}</h2>
+            <form onSubmit={salvaTransfer}>
               
-              <label>
-                Runner:
-                <select name="id_runner" value={form.id_runner} onChange={aggiornaForm} style={{ width: '100%' }}>
+              <label>Runner:
+                <select name="id_runner" value={form.id_runner} onChange={aggiornaForm}>
                   <option value="">-- Nessun runner (Lascia in sospeso) --</option>
                   {persone.map(p => (
                     <option key={p.id} value={p.id}>{p.nome} {p.cognome}</option>
@@ -201,29 +176,26 @@ export default function GestioneTransfer() {
                 </select>
               </label>
 
-              <label>
-                Orario Pickup:
-                <input name="orario_pickup" type="datetime-local" value={form.orario_pickup} onChange={aggiornaForm} style={{ width: '100%' }} />
+              <label>Orario Pickup:
+                <input name="orario_pickup" type="datetime-local" value={form.orario_pickup} onChange={aggiornaForm} />
               </label>
 
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <label style={{ flex: 1 }}>
-                  Luogo Pickup:
-                  <input name="luogo_pickup" type="text" value={form.luogo_pickup} onChange={aggiornaForm} style={{ width: '100%' }} />
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <label style={{ flex: 1 }}>Luogo Pickup:
+                  <input name="luogo_pickup" type="text" value={form.luogo_pickup} onChange={aggiornaForm} />
                 </label>
-                <label style={{ flex: 1 }}>
-                  Destinazione (Obbligatorio):
-                  <input name="luogo_destinazione" type="text" value={form.luogo_destinazione} onChange={aggiornaForm} required style={{ width: '100%' }} />
+                <label style={{ flex: 1 }}>Destinazione (Obbligatorio):
+                  <input name="luogo_destinazione" type="text" value={form.luogo_destinazione} onChange={aggiornaForm} required />
                 </label>
               </div>
 
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <input name="visibile_al_runner" type="checkbox" checked={form.visibile_al_runner} onChange={aggiornaForm} />
+              <label style={{ flexDirection: 'row', alignItems: 'center', gap: '8px', marginTop: '1rem' }}>
+                <input name="visibile_al_runner" type="checkbox" checked={form.visibile_al_runner} onChange={aggiornaForm} style={{marginTop: 0}} />
                 Rendi visibile nell'app del runner
               </label>
 
-              <div style={{ display: 'flex', gap: '10px', marginTop: '1rem' }}>
-                <button type="button" onClick={() => setModaleAperto(false)} style={{ flex: 1, backgroundColor: '#ccc' }}>Annulla</button>
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
+                <button type="button" className="btn-secondary" onClick={() => setModaleAperto(false)} style={{ flex: 1 }}>Annulla</button>
                 <button type="submit" disabled={inInvio} style={{ flex: 2 }}>
                   {inInvio ? 'Salvataggio...' : 'Salva Transfer'}
                 </button>
@@ -232,15 +204,6 @@ export default function GestioneTransfer() {
           </div>
         </div>
       )}
-    </main>
+    </>
   );
 }
-
-// Stili base per il popup modale
-const stileModale = {
-  position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-  backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000
-};
-const stileContenutoModale = {
-  backgroundColor: 'white', padding: '2rem', borderRadius: '8px', minWidth: '400px', boxShadow: '0 4px 10px rgba(0,0,0,0.2)'
-};

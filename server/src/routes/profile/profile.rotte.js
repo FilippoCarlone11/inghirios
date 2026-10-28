@@ -4,7 +4,14 @@ import { richiediAuth } from '../../middleware/authentication.js';
 import { richiediRuolo } from '../../middleware/authorization.js';
 import { ErroreHttp } from '../../middleware/errors.js';
 import { TIPO_GIURIA, ELENCO_RUOLI, RUOLI, TIPO_PARTECIPAZIONE } from '../../ruoli.js';
-import { elenco, crea, aggiungiAGiurato, deletePersona, elencoGiurati, elencoStaffLogistica, elencoRunners, updateLiberatoria } from './profile.query.js';
+
+// Aggiunto "eliminaAccompagnatore" alle importazioni
+import { 
+  elenco, crea, aggiungiAGiurato, deletePersona, elencoGiurati, 
+  elencoStaffLogistica, elencoRunners, updateLiberatoria, 
+  trovaAttivaPerId, creaAccompagnatore, numeroAccompagnatori, 
+  elencoAccompagnatori, eliminaAccompagnatore 
+} from './profile.query.js';
 
 const router = Router();
 
@@ -17,7 +24,6 @@ router.post('/', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res) => {
   res.status(201).json(persona);
 });
 
-
 router.post('/aggiungi-giurato', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res) => {
   const datiPersona = { ...req.body, ruolo: RUOLI.GIURATO}; 
   const persona = await creaPersonaBase(datiPersona);
@@ -27,19 +33,19 @@ router.post('/aggiungi-giurato', richiediAuth, richiediRuolo(RUOLI.ADMIN), async
   const emittente = String(req.body?.emittente ?? '').trim() || null;
   const mezzo_di_informazione = String(req.body?.mezzo_di_informazione ?? '').trim() || null;
 
-
   if (!TIPO_GIURIA.includes(tipo_giudice)) {
     throw new ErroreHttp(400, 'Tipologia giudice non valida');
   }
   if (!TIPO_PARTECIPAZIONE.includes(tipo_partecipazione)) {
     throw new ErroreHttp(400, 'Tipologia partecipazione non valida');
   }
+  
   try {
     const giurato = await aggiungiAGiurato({
-      id_utente: persona.id,                 // Corretto: prima era persona_id
-      tipo_giuria: tipo_giudice,             // Corretto: prima era tipo_giudice
+      id_utente: persona.id,
+      tipo_giuria: tipo_giudice,
       liberatoria_consegnata: false,
-      partecipazione: tipo_partecipazione,   // Corretto: prima era tipo_partecipazione
+      partecipazione: tipo_partecipazione,
       emittente: emittente,
       mezzo_di_informazione: mezzo_di_informazione,
       partecipa_in_questa_edizione: false
@@ -50,7 +56,6 @@ router.post('/aggiungi-giurato', richiediAuth, richiediRuolo(RUOLI.ADMIN), async
       persona, 
       giurato 
     });
-
     
   } catch (err) {
     console.error("ERRORE CREAZIONE GIURATO:", err); 
@@ -58,15 +63,13 @@ router.post('/aggiungi-giurato', richiediAuth, richiediRuolo(RUOLI.ADMIN), async
     try {
       await deletePersona(persona.id);
       console.log("Rollback: Persona eliminata a causa di un errore successivo.");
-    }
-    catch(errRollback){
+    } catch(errRollback){
       console.error("ERRORE DURANTE IL ROLLBACK:", errRollback); 
     }
     
-    // 3. INVIA I DETTAGLI AL CLIENT INVECE DI FARE THROW (Temporaneo per debug)
     res.status(500).json({ 
       errore: "Errore interno", 
-      messaggio: err.message, // Questo ti dirà cosa è successo
+      messaggio: err.message,
       dettagli: err.detail || err.stack 
     });
   }
@@ -84,7 +87,9 @@ router.get('/elenco-runners', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (r
   res.json(await elencoRunners());
 });
 
-
+router.get('/elenco-accompagnatori', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res) => {
+  res.json(await elencoAccompagnatori());
+});
 
 async function creaPersonaBase(dati) {
   const username = String(dati.username ?? '').trim().toLowerCase();
@@ -106,14 +111,13 @@ async function creaPersonaBase(dati) {
   const passwordHash = await bcrypt.hash(password, 12);
 
   try {
-    // Ritorna l'oggetto persona creato
     return await crea({ username, passwordHash, nome, cognome, email, telefono, ruolo });
   } catch (err) {
     if (err.code === '23505') {
       const campo = err.constraint?.includes('email') ? 'email' : 'username';
       throw new ErroreHttp(409, `Esiste già una persona con questo ${campo}`);
     }
-    throw err; // Rilancia altri errori
+    throw err;
   }
 }
 
@@ -133,4 +137,66 @@ router.put('/modifica-liberatoria/:id', richiediAuth, richiediRuolo(RUOLI.ADMIN)
     next(err);
   }
 });
+
+// Aggiunto "next" e sistemata la risposta
+router.post('/aggiungi-accompagnatore', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res, next) => {
+  try {
+    const nome = String(req.body.nome ?? '').trim();
+    const cognome = String(req.body.cognome ?? '').trim();
+    const id_accompagnatore = Number(req.body.id_accompagnatore);
+
+    if (!nome || !cognome) throw new ErroreHttp(400, 'Nome e cognome sono obbligatori');
+    if (!id_accompagnatore) throw new ErroreHttp(400, 'Devi selezionare un utente');
+
+    const esisteAccompagnatore = await trovaAttivaPerId(id_accompagnatore);
+    if (!esisteAccompagnatore) throw new ErroreHttp(400, 'Non esiste l\'utente a cui associare l\'accompagnatore');
+   
+    const nuovoAccompagnatore = await creaAccompagnatore({ nome, cognome, id_accompagnatore });
+    
+    // Invia i dati al client e sblocca il frontend
+    res.status(201).json(nuovoAccompagnatore); 
+  } catch (err) {
+    next(err); 
+  }
+});
+
+router.put('/numero-accompagnatori/:id', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res, next) => {
+  try {
+    const id_accompagnatore = Number(req.params.id);
+
+    if (!id_accompagnatore) {
+      throw new ErroreHttp(400, 'ID mancante o non valido');
+    }
+    
+    const accompagnatori = await numeroAccompagnatori(id_accompagnatore);
+
+    if (accompagnatori < 0) {
+      throw new ErroreHttp(404, 'Errore con il numero di accompagnatori');
+    }
+
+    res.status(200).json({ totale: accompagnatori });
+
+  } catch (err) {
+    console.error("ERRORE NUMERO ACCOMPAGNATORI:", err); 
+    next(err); 
+  }
+});
+
+// Sistemata usando la funzione "eliminaAccompagnatore" importata
+router.delete('/elimina-accompagnatore/:id', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    
+    const eliminato = await eliminaAccompagnatore(id);
+    
+    if (!eliminato) {
+      throw new ErroreHttp(404, 'Accompagnatore non trovato');
+    }
+
+    res.status(200).json({ success: true, message: 'Eliminato' });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

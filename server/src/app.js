@@ -7,6 +7,7 @@ import profileRotte from './routes/profile/profile.rotte.js';
 import ruoliRotte from './routes/ruoli/ruoli.rotte.js';
 import bigliettiRotte from './routes/biglietti/biglietti.rotte.js';
 import transferRotte from './routes/transfer/transfer.rotte.js';
+import alloggiRotte from './routes/alloggi/alloggi.rotte.js';
 import { nonTrovato, gestoreErrori } from './middleware/errors.js';
 
 export const app = express();
@@ -27,6 +28,7 @@ app.use('/api/profile', profileRotte);
 app.use('/api/ruoli', ruoliRotte);
 app.use('/api/biglietti', bigliettiRotte);
 app.use('/api/transfer', transferRotte);
+app.use('/api/alloggi', alloggiRotte);
 
 // Questi due vanno SEMPRE in fondo
 app.use('/api', nonTrovato);
