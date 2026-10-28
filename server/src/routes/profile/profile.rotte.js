@@ -5,12 +5,12 @@ import { richiediRuolo } from '../../middleware/authorization.js';
 import { ErroreHttp } from '../../middleware/errors.js';
 import { TIPO_GIURIA, ELENCO_RUOLI, RUOLI, TIPO_PARTECIPAZIONE } from '../../ruoli.js';
 
-// Aggiunto "eliminaAccompagnatore" alle importazioni
+
 import { 
   elenco, crea, aggiungiAGiurato, deletePersona, elencoGiurati, 
   elencoStaffLogistica, elencoRunners, updateLiberatoria, 
   trovaAttivaPerId, creaAccompagnatore, numeroAccompagnatori, 
-  elencoAccompagnatori, eliminaAccompagnatore 
+  elencoAccompagnatori, eliminaAccompagnatore, elencoOspiti 
 } from './profile.query.js';
 
 const router = Router();
@@ -75,8 +75,17 @@ router.post('/aggiungi-giurato', richiediAuth, richiediRuolo(RUOLI.ADMIN), async
   }
 });
 
+router.post('/aggiungi-ospite', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res) => {
+  const ospite = await creaPersonaBase(req.body);
+  res.status(201).json(ospite);
+});
+
 router.get('/elenco-giurati', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res) => {
   res.json(await elencoGiurati());
+});
+
+router.get('/elenco-ospiti', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res) => {
+  res.json(await elencoOspiti());
 });
 
 router.get('/elenco-staff-logistica', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res) => {
@@ -91,7 +100,8 @@ router.get('/elenco-accompagnatori', richiediAuth, richiediRuolo(RUOLI.ADMIN), a
   res.json(await elencoAccompagnatori());
 });
 
-async function creaPersonaBase(dati) {
+// Aggiunto parametro id_capogruppo per gestire i membri subordinati
+async function creaPersonaBase(dati, id_capogruppo = null) {
   const username = String(dati.username ?? '').trim().toLowerCase();
   const nome = String(dati.nome ?? '').trim();
   const cognome = String(dati.cognome ?? '').trim();
@@ -99,6 +109,9 @@ async function creaPersonaBase(dati) {
   const telefono = String(dati.telefono ?? '').trim() || null;
   const ruolo = String(dati.ruolo ?? '');
   const password = String(dati.password ?? '');
+  
+  // Gestione del flag capo_gruppo
+  const capo_gruppo = Boolean(dati.capo_gruppo); 
 
   if (!/^[a-z0-9._-]{3,50}$/.test(username)) {
     throw new ErroreHttp(400, 'Lo username deve avere da 3 a 50 caratteri: lettere, numeri, punto, trattino o underscore');
@@ -111,7 +124,11 @@ async function creaPersonaBase(dati) {
   const passwordHash = await bcrypt.hash(password, 12);
 
   try {
-    return await crea({ username, passwordHash, nome, cognome, email, telefono, ruolo });
+    // Passo i nuovi parametri alla query
+    return await crea({ 
+      username, passwordHash, nome, cognome, email, telefono, ruolo, 
+      capo_gruppo, id_capogruppo 
+    });
   } catch (err) {
     if (err.code === '23505') {
       const campo = err.constraint?.includes('email') ? 'email' : 'username';
@@ -120,6 +137,39 @@ async function creaPersonaBase(dati) {
     throw err;
   }
 }
+
+router.post('/aggiungi-ospite-gruppo', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res, next) => {
+  try {
+    const { leader, membri } = req.body;
+
+    if (!leader) {
+      throw new ErroreHttp(400, 'Dati del capo gruppo mancanti');
+    }
+
+    // 1. Crea il capo gruppo (non ha id_capogruppo perché è lui il leader)
+    leader.ruolo = leader.ruolo || 'ospite'; 
+    leader.capo_gruppo = true;
+    const leaderCreato = await creaPersonaBase(leader);
+
+    const membriCreati = [];
+
+    // 2. Crea i membri subordinati, associandoli all'ID del leader appena creato
+    if (membri && Array.isArray(membri) && membri.length > 0) {
+      for (const membro of membri) {
+        membro.ruolo = membro.ruolo || 'ospite';
+        membro.capo_gruppo = false; // I membri non sono capi gruppo
+        
+        // Passiamo l'ID del leader come secondo parametro (id_capogruppo)
+        const membroCreato = await creaPersonaBase(membro, leaderCreato.id);
+        membriCreati.push(membroCreato);
+      }
+    }
+
+    res.status(201).json({ leader: leaderCreato, membri: membriCreati });
+  } catch (err) {
+    next(err);
+  }
+});
 
 router.put('/modifica-liberatoria/:id', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res, next) => {
   try {
@@ -182,7 +232,6 @@ router.put('/numero-accompagnatori/:id', richiediAuth, richiediRuolo(RUOLI.ADMIN
   }
 });
 
-// Sistemata usando la funzione "eliminaAccompagnatore" importata
 router.delete('/elimina-accompagnatore/:id', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res, next) => {
   try {
     const id = Number(req.params.id);

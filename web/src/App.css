@@ -1,87 +1,211 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600&display=swap');
+
 :root {
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
-  --bg-color: #f8fafc;
-  --surface: #ffffff;
-  --text-main: #0f172a;
-  --text-muted: #64748b;
-  --border: #e2e8f0;
+  /* Palette del festival, presa dal logo */
+  --primary: #660000;          /* bordeaux */
+  --primary-hover: #4a0000;
+  --gold: #b8975a;             /* oro del cerchio */
+  --gold-light: #e3c88c;
+  --bg-color: #f1efeb;         /* grigio caldo */
+  --surface: #fdfcfa;
+  --text-main: #1f2d30;        /* verde-ardesia scuro delle scritte del logo */
+  --text-muted: #667074;
+  --border: #dcd8d0;
+  --logo-bg: #f5f5f5;          /* fondo esatto del file del logo */
   --radius: 8px;
-  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow: 0 1px 2px rgb(31 45 48 / 0.06), 0 6px 16px -6px rgb(31 45 48 / 0.12);
+
+  --font-display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
 }
 
 body {
   margin: 0;
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: var(--font-body);
   background-color: var(--bg-color);
   color: var(--text-main);
 }
 
-/* Layout principale con Sidebar */
+/* ==========================================
+   LAYOUT CON SIDEBAR
+   ========================================== */
 .app-layout {
   display: flex;
   min-height: 100vh;
 }
 
 .sidebar {
-  width: 250px;
-  background-color: #1e293b;
+  width: 260px;
+  flex-shrink: 0;
+  background-color: var(--primary);
   color: white;
   display: flex;
   flex-direction: column;
-  padding: 1.5rem 1rem;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
 }
 
-.sidebar h2 {
-  margin-top: 0;
-  margin-bottom: 2rem;
-  font-size: 1.5rem;
+/* Logo: pannello chiaro, stesso colore del fondo del file */
+.sidebar-brand {
+  background-color: var(--logo-bg);
+  padding: 1rem 1rem 0.5rem;
   text-align: center;
-  color: white;
+  border-bottom: 4px solid var(--gold);
+}
+
+.sidebar-brand img {
+  width: 128px;
+  height: 128px;
+  display: block;
+  margin: 0 auto;
+}
+
+.sidebar-brand h2 {
+  margin: 0.25rem 0 0.5rem;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.75rem;
+  letter-spacing: 0.02em;
+  color: var(--primary);
+}
+
+/* Fila di rombi, ispirata ai motivi dei tessuti sardi */
+.motivo {
+  height: 8px;
+  margin: 0.75rem 1rem;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 8'%3E%3Cpath d='M8 0.5 L13.5 4 L8 7.5 L2.5 4 Z' fill='none' stroke='%23e3c88c' stroke-width='1'/%3E%3C/svg%3E") repeat-x center / 16px 8px;
+  opacity: 0.7;
 }
 
 .sidebar nav {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.125rem;
+  padding: 0.75rem 0.75rem 0;
 }
 
 .sidebar nav a {
-  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #f1dcdc;
   text-decoration: none;
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.75rem;
   border-radius: var(--radius);
-  transition: background 0.2s;
+  transition: background 0.2s, color 0.2s;
+}
+
+.sidebar nav a svg {
+  flex-shrink: 0;
+  color: var(--gold-light);
+}
+
+.sidebar nav a .voce {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.sidebar nav a .voce-sardo {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.sidebar nav a .voce-it {
+  font-size: 0.75rem;
+  opacity: 0.7;
 }
 
 .sidebar nav a:hover {
-  background-color: #334155;
+  background-color: rgb(255 255 255 / 0.08);
   color: white;
+}
+
+/* Voce attiva: forma irregolare, come una pennellata */
+.sidebar nav a.active {
+  background-color: rgb(227 200 140 / 0.18);
+  color: white;
+  border-radius: 18px 6px 20px 6px;
+}
+
+.sidebar nav a:focus-visible,
+.btn-esci:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 1rem 0.75rem 1.25rem;
+}
+
+.btn-esci {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background-color: transparent;
+  color: var(--gold-light);
+  border: 1px solid var(--gold);
+}
+
+.btn-esci:hover {
+  background-color: rgb(227 200 140 / 0.15);
 }
 
 .main-content {
   flex: 1;
-  padding: 2rem;
-  overflow-y: auto;
+  min-width: 0;
+  padding: 2rem 2.5rem;
 }
 
-/* UI Elements */
+/* ==========================================
+   ELEMENTI UI
+   ========================================== */
 .card {
   background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: 1.5rem;
   margin-bottom: 1.5rem;
 }
 
-h1 {
-  font-size: 1.75rem;
-  margin-top: 0;
-  margin-bottom: 1.5rem;
+/* Titoli: stesso carattere condensato e pesante del logo */
+h1, h2, h3 {
+  font-family: var(--font-display);
   color: var(--text-main);
+  letter-spacing: 0.01em;
 }
 
-/* Form e Input */
+h1 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  line-height: 1.05;
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.9rem;
+  position: relative;
+}
+
+/* Pennellata dorata sotto il titolo di pagina */
+h1::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 160px;
+  height: 12px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 12'%3E%3Cpath d='M3 7 C 28 3 52 10 84 6 S 136 4 157 7' fill='none' stroke='%23b8975a' stroke-width='4.5' stroke-linecap='round'/%3E%3Cpath d='M20 9.5 C 50 7.5 90 11 140 8.5' fill='none' stroke='%23b8975a' stroke-opacity='.55' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat left / 160px 12px;
+}
+
+h2 { font-size: 1.6rem; font-weight: 700; margin-top: 0; }
+h3 { font-weight: 700; }
+
+/* Form e input */
 label {
   display: flex;
   flex-direction: column;
@@ -97,13 +221,16 @@ input, select, textarea {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   font-size: 1rem;
+  font-family: var(--font-body);
+  background-color: white;
+  color: var(--text-main);
   transition: border-color 0.2s;
 }
 
-input:focus, select:focus {
+input:focus, select:focus, textarea:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 0 0 3px rgb(102 0 0 / 0.18);
 }
 
 /* Bottoni */
@@ -115,6 +242,7 @@ button, .btn {
   border-radius: var(--radius);
   font-size: 1rem;
   font-weight: 500;
+  font-family: var(--font-body);
   cursor: pointer;
   transition: background 0.2s;
 }
@@ -123,17 +251,22 @@ button:hover, .btn:hover {
   background-color: var(--primary-hover);
 }
 
+button:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
 button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
 .btn-secondary {
-  background-color: #e2e8f0;
+  background-color: #e6e2da;
   color: var(--text-main);
 }
 .btn-secondary:hover {
-  background-color: #cbd5e1;
+  background-color: #d8d3c8;
 }
 
 /* Tabelle */
@@ -153,7 +286,7 @@ th, td {
 }
 
 th {
-  background-color: #f8fafc;
+  background-color: #ece9e2;
   font-weight: 600;
   color: var(--text-muted);
 }
@@ -161,7 +294,7 @@ th {
 /* Modal */
 .modal-overlay {
   position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-  background-color: rgba(15, 23, 42, 0.5);
+  background-color: rgb(31 20 20 / 0.55);
   display: flex; justify-content: center; align-items: center;
   z-index: 1000;
   backdrop-filter: blur(4px);
@@ -174,4 +307,32 @@ th {
   width: 100%;
   max-width: 500px;
   box-shadow: var(--shadow);
+}
+
+/* ==========================================
+   SCHERMI STRETTI (telefono / tablet)
+   ========================================== */
+@media (max-width: 800px) {
+  .app-layout { flex-direction: column; }
+
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: static;
+    overflow-y: visible;
+  }
+
+  .sidebar nav {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .motivo { grid-column: 1 / -1; }
+
+  .main-content { padding: 1.25rem; }
+  h1 { font-size: 2rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
 }

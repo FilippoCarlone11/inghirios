@@ -51,12 +51,12 @@ export async function aggiornaPassword(id, hash) {
   await pool.query('UPDATE persone SET password_hash = $1 WHERE id = $2', [hash, id]);
 }
 
-export async function crea({ username, passwordHash, nome, cognome, email, telefono, ruolo }) {
+export async function crea({ username, passwordHash, nome, cognome, email, telefono, ruolo, capo_gruppo = false, id_capogruppo = null }) {
   const { rows } = await pool.query(
-    `INSERT INTO persone (username, password_hash, nome, cognome, email, telefono, ruolo)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
-     RETURNING id, username, nome, cognome, email, telefono, ruolo, attivo`,
-    [username, passwordHash, nome, cognome, email, telefono, ruolo]
+    `INSERT INTO persone (username, password_hash, nome, cognome, email, telefono, ruolo, capo_gruppo, id_capogruppo)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+     RETURNING id, username, nome, cognome, email, telefono, ruolo, attivo, capo_gruppo, id_capogruppo`,
+    [username, passwordHash, nome, cognome, email, telefono, ruolo, capo_gruppo, id_capogruppo]
   );
   return rows[0];
 }
@@ -93,6 +93,15 @@ export async function deletePersona(id) {
   return rowCount > 0; 
 }
 
+export async function eliminaAccompagnatore(id) {
+  const { rowCount } = await pool.query(
+    'DELETE FROM accompagnatori WHERE id = $1',
+    [id]
+  );
+  
+  return rowCount > 0; 
+}
+
 export async function elencoGiurati(){
   
   const { rows } = await pool.query(
@@ -106,6 +115,17 @@ export async function elencoGiurati(){
   );
   return rows;
 
+}
+
+export async function elencoOspiti(){
+  const { rows } = await pool.query(
+    `SELECT 
+    id, nome, cognome, username, email, telefono, capo_gruppo, id_capogruppo
+    FROM persone
+    WHERE ruolo = 'ospite'
+    ORDER BY cognome, nome`
+  );
+  return rows;
 }
 
 export async function creaAccompagnatore({ nome, cognome, id_accompagnatore }){
@@ -132,7 +152,8 @@ export async function elencoAccompagnatori() {
       a.nome AS nome_accompagnatore, 
       a.cognome AS cognome_accompagnatore, 
       p.nome AS nome_persona, 
-      p.cognome AS cognome_persona 
+      p.cognome AS cognome_persona,
+      p.id AS id_persona 
     FROM accompagnatori a 
     JOIN persone p ON a.id_accompagnatore = p.id
   `;
