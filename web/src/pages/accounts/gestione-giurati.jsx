@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../api.js';
+import Modal from './Modal'; // <-- Modifica il percorso se necessario
+import { useSortableData } from './useSortableData'; // <-- Modifica il percorso se necessario
 
 const FORM_VUOTO = {
   username: '',
@@ -15,7 +17,7 @@ const FORM_VUOTO = {
   mezzo_di_informazione: '',
 };
 
-export default function CreaGiurato() {
+export default function GestioneGiurati() {
   const navigate = useNavigate();
   
   // Stati del form
@@ -27,8 +29,8 @@ export default function CreaGiurato() {
   // Stati dell'elenco
   const [giurati, setGiurati] = useState([]);
   const [ricerca, setRicerca] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false); // Stato per il popup
 
-  // Funzione per caricare i giurati (separata per poterla richiamare dopo la creazione)
   function caricaGiurati() {
     api('/profile/elenco-giurati')
       .then(setGiurati)
@@ -57,7 +59,14 @@ export default function CreaGiurato() {
       });
       setSuccesso(`Giurato creato con successo: ${creato.persona.username}`);
       setDati(FORM_VUOTO);
-      caricaGiurati(); // Aggiorna l'elenco dopo averne creato uno nuovo
+      caricaGiurati(); 
+      
+      // Chiude il popup automaticamente dopo il successo
+      setTimeout(() => {
+        setIsModalOpen(false);
+        setSuccesso('');
+      }, 1500);
+
     } catch (err) {
       setErrore(err.message);
     } finally {
@@ -65,7 +74,7 @@ export default function CreaGiurato() {
     }
   }
 
-  // Filtro per la ricerca
+  // Filtro ricerca
   const giuratiFiltrati = giurati.filter((p) => {
     const termine = ricerca.toLowerCase();
     return (
@@ -75,46 +84,63 @@ export default function CreaGiurato() {
     );
   });
 
+  // Logica ordinamento
+  const { items: giuratiOrdinati, requestSort, sortConfig } = useSortableData(giuratiFiltrati);
+
+  const getSortIcon = (nomeColonna) => {
+    if (!sortConfig || sortConfig.key !== nomeColonna) return ' ↕';
+    return sortConfig.direction === 'asc' ? ' ▲' : ' ▼';
+  };
+
   return (
     <>
-      {/* SEZIONE 1: CREAZIONE GIURATO */}
-      <h1 style={{ marginBottom: '2rem' }}>Aggiungi Giurato</h1>
-      
-      <div className="card" style={{  marginBottom: '4rem' }}>
+      {/* HEADER CON TITOLO E STRUMENTI (RICERCA + PULSANTE) */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <h1 style={{ margin: 0 }}>Gestione Giurati</h1>
+        
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <input 
+            type="text" 
+            placeholder="Cerca per nome, cognome o username..." 
+            value={ricerca}
+            onChange={(e) => setRicerca(e.target.value)}
+            style={{ padding: '0.5rem', width: '100%', minWidth: '300px', borderRadius: '4px', border: '1px solid var(--border)' }}
+          />
+          <button 
+            onClick={() => {
+              setErrore('');
+              setSuccesso('');
+              setIsModalOpen(true);
+            }} 
+            style={{ padding: '0.6rem 1rem', whiteSpace: 'nowrap' }}
+          >
+            + Aggiungi Giurato
+          </button>
+        </div>
+      </div>
+
+      {/* POPUP PER LA CREAZIONE GIURATO */}
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} titolo="Aggiungi Nuovo Giurato">
         <form onSubmit={invia} style={{ display: 'flex', flexDirection: 'column' }}>
           
-          {/* DATI PERSONALI */}
           <h3 style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', marginBottom: '1.5rem', color: 'var(--primary)' }}>
             Dati Personali
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
-            <label> Nome
-              <input name="nome" value={dati.nome} onChange={aggiorna} required />
-            </label>
-            <label> Cognome
-              <input name="cognome" value={dati.cognome} onChange={aggiorna} required />
-            </label>
-            <label> Email
-              <input name="email" type="email" value={dati.email} onChange={aggiorna} />
-            </label>
-            <label> Telefono
-              <input name="telefono" type="tel" value={dati.telefono} onChange={aggiorna} />
-            </label>
-            <label> Username
-              <input name="username" value={dati.username} onChange={aggiorna} autoComplete="off" required />
-            </label>
-            <label> Password
-              <input name="password" type="password" value={dati.password} onChange={aggiorna} autoComplete="new-password" minLength={8} required />
-            </label>
+            <label> Nome <input name="nome" value={dati.nome} onChange={aggiorna} required style={{ width: '100%', marginTop: '0.5rem' }} /></label>
+            <label> Cognome <input name="cognome" value={dati.cognome} onChange={aggiorna} required style={{ width: '100%', marginTop: '0.5rem' }} /></label>
+            <label> Email <input name="email" type="email" value={dati.email} onChange={aggiorna} style={{ width: '100%', marginTop: '0.5rem' }} /></label>
+            <label> Telefono <input name="telefono" type="tel" value={dati.telefono} onChange={aggiorna} style={{ width: '100%', marginTop: '0.5rem' }} /></label>
+            <label> Username <input name="username" value={dati.username} onChange={aggiorna} autoComplete="off" required style={{ width: '100%', marginTop: '0.5rem' }} /></label>
+            <label> Password <input name="password" type="password" value={dati.password} onChange={aggiorna} autoComplete="new-password" minLength={8} required style={{ width: '100%', marginTop: '0.5rem' }} /></label>
           </div>
 
-          {/* DETTAGLI GIURIA */}
           <h3 style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', marginBottom: '1.5rem', color: 'var(--primary)' }}>
             Dettagli Giuria
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
             <label> Tipologia Giudice
-              <select name="tipo_giudice" value={dati.tipo_giudice} onChange={aggiorna} required>
+              <select name="tipo_giudice" value={dati.tipo_giudice} onChange={aggiorna} required style={{ width: '100%', marginTop: '0.5rem' }}>
                 <option value="">Seleziona...</option>
                 <option value="critica">Critica (Tecnico)</option>
                 <option value="internazionale">Internazionale (Popolare)</option>
@@ -122,22 +148,18 @@ export default function CreaGiurato() {
               </select>
             </label>
             <label> Tipologia Partecipazione
-              <select name="tipo_partecipazione" value={dati.tipo_partecipazione} onChange={aggiorna} required>
+              <select name="tipo_partecipazione" value={dati.tipo_partecipazione} onChange={aggiorna} required style={{ width: '100%', marginTop: '0.5rem' }}>
                 <option value="">Seleziona...</option>
                 <option value="in loco">In loco</option>
                 <option value="da remoto">Da remoto</option>
               </select>
             </label>
-            <label> Emittente
-              <input name="emittente" value={dati.emittente} onChange={aggiorna} />
-            </label>
-            <label> Mezzo di informazione
-              <input name="mezzo_di_informazione" value={dati.mezzo_di_informazione} onChange={aggiorna} />
-            </label>
+            <label> Emittente <input name="emittente" value={dati.emittente} onChange={aggiorna} style={{ width: '100%', marginTop: '0.5rem' }} /></label>
+            <label> Mezzo di Info <input name="mezzo_di_informazione" value={dati.mezzo_di_informazione} onChange={aggiorna} style={{ width: '100%', marginTop: '0.5rem' }} /></label>
           </div>
 
-          {errore && <p style={{ color: '#ef4444', marginTop: '1.5rem' }} role="alert">{errore}</p>}
-          {successo && <p style={{ color: '#10b981', marginTop: '1.5rem' }} role="status">{successo}</p>}
+          {errore && <p style={{ color: '#ef4444', marginTop: '1.5rem', marginBottom: 0 }} role="alert">{errore}</p>}
+          {successo && <p style={{ color: '#10b981', marginTop: '1.5rem', marginBottom: 0 }} role="status">{successo}</p>}
 
           <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
             <button type="submit" disabled={inInvio} style={{ minWidth: '150px' }}>
@@ -145,50 +167,36 @@ export default function CreaGiurato() {
             </button>
           </div>
         </form>
-      </div>
+      </Modal>
 
-
-      {/* SEZIONE 2: ELENCO E RICERCA GIURATI */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h1>Gestione Giurati</h1>
-        
-        {/* Campo di ricerca */}
-        <input 
-          type="text" 
-          placeholder="Cerca per nome, cognome o username..." 
-          value={ricerca}
-          onChange={(e) => setRicerca(e.target.value)}
-          style={{ padding: '0.5rem', width: '100%', maxWidth: '300px', borderRadius: '4px', border: '1px solid var(--border)' }}
-        />
-      </div>
-
+      {/* TABELLA CON COLONNE ORDINABILI */}
       <div className="card">
         <div className="table-container">
           <table>
             <thead>
               <tr>
-                <th>Cognome</th>
-                <th>Nome</th>
-                <th>Username</th>
-                <th>Email</th>
-                <th>Telefono</th>
-                <th>Tipo Giuria</th>
-                <th>Partecipazione</th>
-                <th>Emittente</th>
-                <th>Mezzo di Info</th>
-                <th style={{ textAlign: 'center' }}>Liberatoria</th>
-                <th style={{ textAlign: 'center' }}>In Edizione</th>
+                <th onClick={() => requestSort('cognome')} style={{ cursor: 'pointer' }}>Cognome{getSortIcon('cognome')}</th>
+                <th onClick={() => requestSort('nome')} style={{ cursor: 'pointer' }}>Nome{getSortIcon('nome')}</th>
+                <th onClick={() => requestSort('username')} style={{ cursor: 'pointer' }}>Username{getSortIcon('username')}</th>
+                <th onClick={() => requestSort('email')} style={{ cursor: 'pointer' }}>Email{getSortIcon('email')}</th>
+                <th onClick={() => requestSort('telefono')} style={{ cursor: 'pointer' }}>Telefono{getSortIcon('telefono')}</th>
+                <th onClick={() => requestSort('tipo_giuria')} style={{ cursor: 'pointer' }}>Tipo Giuria{getSortIcon('tipo_giuria')}</th>
+                <th onClick={() => requestSort('partecipazione')} style={{ cursor: 'pointer' }}>Partecipazione{getSortIcon('partecipazione')}</th>
+                <th onClick={() => requestSort('emittente')} style={{ cursor: 'pointer' }}>Emittente{getSortIcon('emittente')}</th>
+                <th onClick={() => requestSort('mezzo_di_informazione')} style={{ cursor: 'pointer' }}>Mezzo di Info{getSortIcon('mezzo_di_informazione')}</th>
+                <th onClick={() => requestSort('liberatoria_consegnata')} style={{ cursor: 'pointer', textAlign: 'center' }}>Liberatoria{getSortIcon('liberatoria_consegnata')}</th>
+                <th onClick={() => requestSort('partecipa_in_questa_edizione')} style={{ cursor: 'pointer', textAlign: 'center' }}>In Edizione{getSortIcon('partecipa_in_questa_edizione')}</th>
               </tr>
             </thead>
             <tbody>
-              {giuratiFiltrati.length === 0 ? (
+              {giuratiOrdinati.length === 0 ? (
                 <tr>
                   <td colSpan="11" style={{ textAlign: 'center', padding: '2rem' }}>
                     Nessun giurato trovato.
                   </td>
                 </tr>
               ) : (
-                giuratiFiltrati.map((p) => (
+                giuratiOrdinati.map((p) => (
                   <tr 
                     key={p.id} 
                     onClick={() => navigate(`/profile/${p.id}`)}

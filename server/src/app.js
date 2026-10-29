@@ -30,6 +30,5 @@ app.use('/api/biglietti', bigliettiRotte);
 app.use('/api/transfer', transferRotte);
 app.use('/api/alloggi', alloggiRotte);
 
-// Questi due vanno SEMPRE in fondo
 app.use('/api', nonTrovato);
 app.use(gestoreErrori);

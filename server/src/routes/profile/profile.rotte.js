@@ -10,8 +10,11 @@ import {
   elenco, crea, aggiungiAGiurato, deletePersona, elencoGiurati, 
   elencoStaffLogistica, elencoRunners, updateLiberatoria, 
   trovaAttivaPerId, creaAccompagnatore, numeroAccompagnatori, 
-  elencoAccompagnatori, eliminaAccompagnatore, elencoOspiti 
+  elencoAccompagnatori, eliminaAccompagnatore, elencoOspiti, creaMembroOspite, trovaPerID, trovaGiuratoPerIDutente, elencoAccompagnatoriPerIDPersona, elencaMembroOspitePerCapoGruppoID
 } from './profile.query.js';
+
+import { trovaAlloggioPerUtenteID } from '../alloggi/alloggi.query.js'; 
+import { trovaBigliettiPerUtenteID } from '../biglietti/biglietti.query.js'; // O come si chiama la tua funzione
 
 const router = Router();
 
@@ -100,7 +103,7 @@ router.get('/elenco-accompagnatori', richiediAuth, richiediRuolo(RUOLI.ADMIN), a
   res.json(await elencoAccompagnatori());
 });
 
-// Aggiunto parametro id_capogruppo per gestire i membri subordinati
+
 async function creaPersonaBase(dati, id_capogruppo = null) {
   const username = String(dati.username ?? '').trim().toLowerCase();
   const nome = String(dati.nome ?? '').trim();
@@ -109,9 +112,7 @@ async function creaPersonaBase(dati, id_capogruppo = null) {
   const telefono = String(dati.telefono ?? '').trim() || null;
   const ruolo = String(dati.ruolo ?? '');
   const password = String(dati.password ?? '');
-  
-  // Gestione del flag capo_gruppo
-  const capo_gruppo = Boolean(dati.capo_gruppo); 
+
 
   if (!/^[a-z0-9._-]{3,50}$/.test(username)) {
     throw new ErroreHttp(400, 'Lo username deve avere da 3 a 50 caratteri: lettere, numeri, punto, trattino o underscore');
@@ -126,8 +127,7 @@ async function creaPersonaBase(dati, id_capogruppo = null) {
   try {
     // Passo i nuovi parametri alla query
     return await crea({ 
-      username, passwordHash, nome, cognome, email, telefono, ruolo, 
-      capo_gruppo, id_capogruppo 
+      username, passwordHash, nome, cognome, email, telefono, ruolo,
     });
   } catch (err) {
     if (err.code === '23505') {
@@ -137,39 +137,6 @@ async function creaPersonaBase(dati, id_capogruppo = null) {
     throw err;
   }
 }
-
-router.post('/aggiungi-ospite-gruppo', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res, next) => {
-  try {
-    const { leader, membri } = req.body;
-
-    if (!leader) {
-      throw new ErroreHttp(400, 'Dati del capo gruppo mancanti');
-    }
-
-    // 1. Crea il capo gruppo (non ha id_capogruppo perché è lui il leader)
-    leader.ruolo = leader.ruolo || 'ospite'; 
-    leader.capo_gruppo = true;
-    const leaderCreato = await creaPersonaBase(leader);
-
-    const membriCreati = [];
-
-    // 2. Crea i membri subordinati, associandoli all'ID del leader appena creato
-    if (membri && Array.isArray(membri) && membri.length > 0) {
-      for (const membro of membri) {
-        membro.ruolo = membro.ruolo || 'ospite';
-        membro.capo_gruppo = false; // I membri non sono capi gruppo
-        
-        // Passiamo l'ID del leader come secondo parametro (id_capogruppo)
-        const membroCreato = await creaPersonaBase(membro, leaderCreato.id);
-        membriCreati.push(membroCreato);
-      }
-    }
-
-    res.status(201).json({ leader: leaderCreato, membri: membriCreati });
-  } catch (err) {
-    next(err);
-  }
-});
 
 router.put('/modifica-liberatoria/:id', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res, next) => {
   try {
@@ -248,4 +215,80 @@ router.delete('/elimina-accompagnatore/:id', richiediAuth, richiediRuolo(RUOLI.A
   }
 });
 
+router.post('/aggiungi-ospite-gruppo', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res, next) => {
+  try {
+    const { leader, membri } = req.body;
+
+    if (!leader) {
+      throw new ErroreHttp(400, 'Dati dell\'ospite principale mancanti');
+    }
+
+    // 1. Crea l'ospite principale (Account vero e proprio nella tabella persone)
+    leader.ruolo = 'ospite'; 
+    const leaderCreato = await creaPersonaBase(leader);
+
+    const membriCreati = [];
+
+    // 2. Crea i membri aggiuntivi (Senza account, nella tabella membri_ospiti)
+    if (membri && Array.isArray(membri) && membri.length > 0) {
+      for (const membro of membri) {
+        // Un minimo di validazione per non inserire righe vuote
+        if (membro.nome && membro.cognome) { 
+          const membroCreato = await creaMembroOspite({
+            id_capo_gruppo: leaderCreato.id, // Colleghiamo all'ID appena generato
+            nome: String(membro.nome).trim(),
+            cognome: String(membro.cognome).trim()
+          });
+          membriCreati.push(membroCreato);
+        }
+      }
+    }
+
+    res.status(201).json({ leader: leaderCreato, membri: membriCreati });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/:id', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res, next) => {
+  try {
+    const id_utente = Number(req.params.id);
+
+    if (!id_utente || isNaN(id_utente)) {
+      throw new ErroreHttp(400, 'ID mancante o non valido');
+    }
+
+    const datiPersonali = await trovaPerID(id_utente);
+    
+    // 1. Dichiaro le variabili prima dei blocchi if
+    let datiGiurato = null;
+    let membriGruppo = null;
+
+    if (datiPersonali.ruolo === RUOLI.GIURATO) {
+      // 2. Aggiunto l'await mancante
+      datiGiurato = await trovaGiuratoPerIDutente(id_utente);
+    } else if (datiPersonali.ruolo === RUOLI.OSPITE) {
+      // 2. Aggiunto l'await mancante
+      membriGruppo = await elencaMembroOspitePerCapoGruppoID(id_utente);
+    }
+
+    const accompagnatori = await elencoAccompagnatoriPerIDPersona(id_utente);
+    
+    const alloggio = await trovaAlloggioPerUtenteID(id_utente);
+    const biglietti = await trovaBigliettiPerUtenteID(id_utente);
+
+    res.status(200).json({ 
+      datiPersonali,
+      datiGiurato,
+      membriGruppo,
+      accompagnatori,
+      alloggio,
+      biglietti
+    });
+
+  } catch (err) {
+    console.error("ERRORE RECUPERO PROFILO COMPLETO:", err); 
+    next(err); 
+  }
+});
 export default router;

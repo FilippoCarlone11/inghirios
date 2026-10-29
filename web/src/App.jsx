@@ -4,8 +4,8 @@ import AppLayout from './components/AppLayout.jsx';
 import Login from './pages/accounts/Login.jsx';
 import Home from './pages/Home.jsx';
 
-import CreaAccount from './pages/accounts/Crea-account.jsx'
 import GestioneGiurati from './pages/accounts/gestione-giurati.jsx'
+import Profilo from './pages/accounts/Profilo.jsx'
 import GestioneStaffLogistica from './pages/accounts/gestione-staff-logistica.jsx'
 import GestioneRunners from './pages/accounts/gestione-runners.jsx'
 import GestioneBiglietti from './pages/biglietti/gestione-biglietti.jsx'
@@ -31,7 +31,6 @@ export default function App() {
 
         {/* Rotte protette solo per Admin */}
         <Route element={<Protection ruoli={['admin']} />}>
-          <Route path="/crea-account" element={<CreaAccount />} />
           <Route path="/gestione-giurati" element={<GestioneGiurati />} />
           <Route path="/gestione-staff-logistica" element={<GestioneStaffLogistica />} />
           <Route path="/gestione-runners" element={<GestioneRunners />} />
@@ -41,6 +40,7 @@ export default function App() {
           <Route path="/gestione-alloggi" element={<GestioneAlloggi />} />
           <Route path="/gestione-accompagnatori" element={<GestioneAccompagnatori />} />
           <Route path="/gestione-ospiti" element={<GestioneOspiti />} />
+          <Route path="/profile/:id" element={<Profilo />} />
         </Route>
 
       </Route>

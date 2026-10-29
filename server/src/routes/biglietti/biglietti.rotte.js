@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { richiediAuth } from '../../middleware/authentication.js';
 import { richiediRuolo } from '../../middleware/authorization.js';
 import { ErroreHttp } from '../../middleware/errors.js';
-import { elencoBiglietti, aggiungiBiglietto, elencoBigliettiDaPerCagliari, eliminaBiglietto  } from './biglietti.query.js';
+import { elencoBiglietti, aggiungiBiglietto, elencoBigliettiDaPerCagliari, eliminaBiglietto, trovaBigliettiPerUtenteID  } from './biglietti.query.js';
 import { RUOLI } from '../../ruoli.js';
 
 const router = Router();
@@ -86,6 +86,26 @@ router.delete('/elimina-biglietto/:id', richiediAuth, richiediRuolo(RUOLI.ADMIN)
 
   } catch (err) {
     console.error("ERRORE ELIMINAZIONE BIGLIETTO:", err); 
+    next(err); 
+  }
+});
+
+router.get('/biglietti/:id', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res, next) => {
+  try {
+    const id_utente = Number(req.params.id);
+
+    if (!id_utente || isNaN(id_utente)) {
+      throw new ErroreHttp(400, 'ID utente mancante o non valido');
+    }
+
+    
+    const biglietti = await trovaBigliettiPerUtenteID(id_utente);
+
+    // I biglietti sono di solito un array. Se non ce ne sono, restituisci un array vuoto
+    res.status(200).json(biglietti || []);
+
+  } catch (err) {
+    console.error(`ERRORE RECUPERO BIGLIETTI PER UTENTE ${req.params.id}:`, err); 
     next(err); 
   }
 });

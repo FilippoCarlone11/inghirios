@@ -3,7 +3,6 @@ import { Router } from 'express';
 import { richiediAuth } from '../../middleware/authentication.js';
 import { richiediRuolo } from '../../middleware/authorization.js';
 import { ErroreHttp } from '../../middleware/errors.js';
-// Assicurati di esportare anche aggiungiCamera dal file delle query!
 import { 
   elencoAlloggi, 
   aggiungiAlloggio, 
@@ -13,7 +12,7 @@ import {
   aggiungiOccupazione,
   elencoCamereAlloggio, 
   elencoOccupazioniAlloggio,
-  getRegoleAlloggioByCamera
+  trovaAlloggioPerUtenteID
 } from './alloggi.query.js';
 import { RUOLI } from '../../ruoli.js';
 
@@ -43,7 +42,6 @@ router.post('/aggiungi-alloggio', richiediAuth, richiediRuolo(RUOLI.ADMIN), asyn
       indirizzo: indirizzo.trim(),
     });
 
-    // CORRETTO: era transfer, ora è alloggio
     res.status(201).json(alloggio);
 
   } catch (err) {
@@ -80,7 +78,6 @@ router.post('/aggiungi-camera', richiediAuth, richiediRuolo(RUOLI.ADMIN), async 
       costo_per_notte: Number(costo_per_notte)
     });
 
-
     res.status(201).json(camera);
 
   } catch (err) {
@@ -92,7 +89,6 @@ router.post('/aggiungi-camera', richiediAuth, richiediRuolo(RUOLI.ADMIN), async 
 // ==========================================
 // MODIFICA ALLOGGIO
 // ==========================================
-
 router.put('/modifica-alloggio/:id', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res, next) => {
   try {
     const id_alloggio = Number(req.params.id);
@@ -163,7 +159,7 @@ router.get('/elenco-occupazioni/:id', richiediAuth, richiediRuolo(RUOLI.ADMIN), 
 // ==========================================
 router.post('/aggiungi-occupazione', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res, next) => {
   try {
-    const { id_camera, id_persona, data_inizio, data_fine, orario_checkin, orario_checkout } = req.body;
+    const { id_camera, id_persona, data_inizio, data_fine } = req.body;
 
     if (!id_camera || !id_persona || !data_inizio || !data_fine) {
       throw new ErroreHttp(400, 'I campi Camera, Persona, Data Inizio e Data Fine sono obbligatori');
@@ -176,27 +172,7 @@ router.post('/aggiungi-occupazione', richiediAuth, richiediRuolo(RUOLI.ADMIN), a
       throw new ErroreHttp(400, 'La data di fine non può essere precedente a quella di inizio');
     }
 
-    // 1. RECUPERA LE REGOLE DELL'ALLOGGIO
-    const regole = await getRegoleAlloggioByCamera(Number(id_camera));
-
-    // 2. LOGICA EARLY CHECK-IN E LATE CHECK-OUT
-    // (L'input type="time" html invia sempre 'HH:mm', es '09:00', quindi la comparazione stringhe funziona perfettamente)
-    
-    // Se arriva prima dell'orario standard, addebita la notte precedente
-    if (orario_checkin && regole.orario_checkin_standard) {
-      if (orario_checkin < regole.orario_checkin_standard) {
-        inizio.setDate(inizio.getDate() - 1); 
-      }
-    }
-
-    // Se va via dopo l'orario standard, addebita anche la notte del giorno in cui esce
-    if (orario_checkout && regole.orario_checkout_standard) {
-      if (orario_checkout > regole.orario_checkout_standard) {
-        fine.setDate(fine.getDate() + 1);
-      }
-    }
-
-    // 3. CREAZIONE DELL'ARRAY DELLE NOTTI
+    // CREAZIONE DELL'ARRAY DELLE NOTTI
     const giorniDaPrenotare = [];
     let dataCorrente = new Date(inizio);
 
@@ -209,21 +185,19 @@ router.post('/aggiungi-occupazione', richiediAuth, richiediRuolo(RUOLI.ADMIN), a
       }
     }
 
-    // 4. SALVATAGGIO NEL DATABASE RIGA PER RIGA
+    // SALVATAGGIO NEL DATABASE RIGA PER RIGA
     const occupazioniAggiunte = [];
     for (const dataSingola of giorniDaPrenotare) {
       try {
         const occupazione = await aggiungiOccupazione({
           id_camera: Number(id_camera),
           id_persona: Number(id_persona),
-          data: dataSingola,
-          orario_checkin: orario_checkin || null,
-          orario_checkout: orario_checkout || null
+          data: dataSingola
         });
         occupazioniAggiunte.push(occupazione);
       } catch (err) {
         if (err.code === '23505') {
-          throw new ErroreHttp(400, `Attenzione: la persona è già assegnata per la notte del ${dataSingola} (magari a causa di un early check-in o late check-out)!`);
+          throw new ErroreHttp(400, `Attenzione: la persona è già assegnata per la notte del ${dataSingola}!`);
         }
         throw err;
       }
@@ -233,6 +207,31 @@ router.post('/aggiungi-occupazione', richiediAuth, richiediRuolo(RUOLI.ADMIN), a
 
   } catch (err) {
     console.error("ERRORE CREAZIONE OCCUPAZIONE:", err); 
+    next(err); 
+  }
+});
+
+// ==========================================
+// GET: RECUPERA ALLOGGIO PER ID UTENTE
+// ==========================================
+router.get('/alloggi/:id', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res, next) => {
+  try {
+    const id_utente = Number(req.params.id);
+
+    if (!id_utente || isNaN(id_utente)) {
+      throw new ErroreHttp(400, 'ID utente mancante o non valido');
+    }
+
+    const alloggio = await trovaAlloggioPerUtenteID(id_utente);
+
+    if (!alloggio) {
+      return res.status(200).json(null); 
+    }
+
+    res.status(200).json(alloggio);
+
+  } catch (err) {
+    console.error(`ERRORE RECUPERO ALLOGGIO PER UTENTE ${req.params.id}:`, err); 
     next(err); 
   }
 });

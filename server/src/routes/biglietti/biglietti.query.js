@@ -80,3 +80,29 @@ export async function eliminaBiglietto(id) {
   
   return rowCount > 0;
 }
+
+export async function trovaBigliettiPerUtenteID(id_utente) {
+    const { rows }=  pool.query(`
+      SELECT 
+        id_utente, 
+        codice_prenotazione, 
+        codice_volo, 
+        codice_treno, 
+        compagnia, 
+        stato, 
+        costo, 
+        da_rimborsare_ospite,
+        partenza,
+        arrivo,
+        orario_partenza_previsto,
+        orario_arrivo_previsto
+      FROM biglietti
+      WHERE id_utente = $1;
+    `,
+    [id_utente]);
+    
+    
+  return rows;
+}
+
+

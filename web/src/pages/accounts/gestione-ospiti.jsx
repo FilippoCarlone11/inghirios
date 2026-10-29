@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../api.js';
+import Modal from './Modal';
+import { useSortableData } from './useSortableData';
 
-const FORM_VUOTO = {
+const FORM_LEADER = {
   username: '',
   nome: '',
   cognome: '',
@@ -12,23 +14,27 @@ const FORM_VUOTO = {
   ruolo: 'ospite',
 };
 
+const FORM_MEMBRO = {
+  nome: '',
+  cognome: '',
+};
+
 export default function GestioneOspiti() {
   const navigate = useNavigate();
   
   // STATI DEL FORM
-  const [datiLeader, setDatiLeader] = useState({ ...FORM_VUOTO, capo_gruppo: true });
-  const [membri, setMembri] = useState([]); // Array dinamico per i membri del gruppo
-  
+  const [datiLeader, setDatiLeader] = useState(FORM_LEADER);
+  const [membri, setMembri] = useState([]); 
   const [errore, setErrore] = useState('');
   const [successo, setSuccesso] = useState('');
   const [inInvio, setInInvio] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   
   // STATI DELL'ELENCO
   const [ospiti, setOspiti] = useState([]);
   const [ricerca, setRicerca] = useState('');
-  const [espansi, setEspansi] = useState({}); // Tiene traccia di quali gruppi sono aperti nella tabella
+  const [espansi, setEspansi] = useState({});
 
-  // Caricamento dati
   function caricaOspiti() {
     api('/profile/elenco-ospiti')
       .then(setOspiti)
@@ -46,7 +52,7 @@ export default function GestioneOspiti() {
   }
 
   function aggiungiMembro() {
-    setMembri([...membri, { ...FORM_VUOTO, capo_gruppo: false }]);
+    setMembri([...membri, { ...FORM_MEMBRO }]);
   }
 
   function rimuoviMembro(index) {
@@ -67,22 +73,26 @@ export default function GestioneOspiti() {
     setInInvio(true);
     
     try {
-      // Invia il leader e i membri in un'unica chiamata (il backend dovrà estrarli)
       const payload = {
         leader: datiLeader,
         membri: membri
       };
 
-      // N.B: Assicurati che l'API backend gestisca questa struttura!
-      const creato = await api('/profile/aggiungi-ospite-gruppo', {
+      await api('/profile/aggiungi-ospite-gruppo', {
         metodo: 'POST',
         corpo: payload,
       });
       
       setSuccesso(`Ospite/Gruppo creato con successo!`);
-      setDatiLeader({ ...FORM_VUOTO, capo_gruppo: true });
+      setDatiLeader(FORM_LEADER);
       setMembri([]);
       caricaOspiti();
+
+      setTimeout(() => {
+        setIsModalOpen(false);
+        setSuccesso('');
+      }, 1500);
+
     } catch (err) {
       setErrore(err.message);
     } finally {
@@ -90,47 +100,77 @@ export default function GestioneOspiti() {
     }
   }
 
-  // GESTIONE TABELLA E RICERCA
+  // GESTIONE TABELLA, RICERCA E ORDINAMENTO
   const toggleEspandi = (id, evento) => {
-    evento.stopPropagation(); // Evita che il click sulla freccia apra anche il profilo
+    evento.stopPropagation();
     setEspansi((prec) => ({ ...prec, [id]: !prec[id] }));
   };
 
-  // 1. Filtriamo in base alla ricerca (Cerca sia nei leader che nei membri)
-  const termine = ricerca.toLowerCase();
-  const ospitiFiltrati = ospiti.filter((p) => 
-    (p.nome && p.nome.toLowerCase().includes(termine)) ||
-    (p.cognome && p.cognome.toLowerCase().includes(termine)) ||
-    (p.username && p.username.toLowerCase().includes(termine))
-  );
+  const ospitiFiltrati = ospiti.filter((o) => {
+    const termine = ricerca.toLowerCase();
+    
+    const matchLeader = 
+      (o.nome && o.nome.toLowerCase().includes(termine)) ||
+      (o.cognome && o.cognome.toLowerCase().includes(termine)) ||
+      (o.username && o.username.toLowerCase().includes(termine));
 
-  // 2. Separiamo i leader (o ospiti singoli) dai membri subordinati
-  // Un ospite è leader se non ha un id_capogruppo
-  const leaderList = ospitiFiltrati.filter((o) => !o.id_capogruppo);
+    const matchMembri = o.membri && o.membri.some((m) => 
+      (m.nome && m.nome.toLowerCase().includes(termine)) ||
+      (m.cognome && m.cognome.toLowerCase().includes(termine))
+    );
+
+    return matchLeader || matchMembri;
+  });
+
+  const { items: ospitiOrdinati, requestSort, sortConfig } = useSortableData(ospitiFiltrati);
+
+  const getSortIcon = (nomeColonna) => {
+    if (!sortConfig || sortConfig.key !== nomeColonna) return ' ↕';
+    return sortConfig.direction === 'asc' ? ' ▲' : ' ▼';
+  };
 
   return (
     <>
-      <h1 style={{ marginBottom: '2rem' }}>Aggiungi Ospite / Gruppo</h1>
-      
-      <div className="card" style={{ marginBottom: '4rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <h1 style={{ margin: 0 }}>Gestione Ospiti e Gruppi</h1>
+        
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <input 
+            type="text" 
+            placeholder="Cerca per nome, cognome o username..." 
+            value={ricerca}
+            onChange={(e) => setRicerca(e.target.value)}
+            style={{ padding: '0.5rem', width: '100%', minWidth: '300px', borderRadius: '4px', border: '1px solid var(--border)' }}
+          />
+          <button 
+            onClick={() => {
+              setErrore('');
+              setSuccesso('');
+              setIsModalOpen(true);
+            }} 
+            style={{ padding: '0.6rem 1rem', whiteSpace: 'nowrap' }}
+          >
+            + Aggiungi Ospite / Gruppo
+          </button>
+        </div>
+      </div>
+
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} titolo="Aggiungi Ospite / Gruppo">
         <form onSubmit={invia} style={{ display: 'flex', flexDirection: 'column' }}>
-          
-          {/* SEZIONE LEADER */}
           <h3 style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', marginBottom: '1.5rem', color: 'var(--primary)' }}>
-            Dati Ospite Principale (Capo Gruppo)
+            Dati Ospite Principale (Account)
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
-            <label> Nome <input name="nome" value={datiLeader.nome} onChange={aggiornaLeader} required /></label>
-            <label> Cognome <input name="cognome" value={datiLeader.cognome} onChange={aggiornaLeader} required /></label>
-            <label> Email <input name="email" type="email" value={datiLeader.email} onChange={aggiornaLeader} /></label>
-            <label> Telefono <input name="telefono" type="tel" value={datiLeader.telefono} onChange={aggiornaLeader} /></label>
-            <label> Username <input name="username" value={datiLeader.username} onChange={aggiornaLeader} autoComplete="off" required /></label>
-            <label> Password <input name="password" type="password" value={datiLeader.password} onChange={aggiornaLeader} autoComplete="new-password" minLength={8} required /></label>
+            <label> Nome <input name="nome" value={datiLeader.nome} onChange={aggiornaLeader} required style={{ width: '100%', marginTop: '0.5rem' }} /></label>
+            <label> Cognome <input name="cognome" value={datiLeader.cognome} onChange={aggiornaLeader} required style={{ width: '100%', marginTop: '0.5rem' }} /></label>
+            <label> Email <input name="email" type="email" value={datiLeader.email} onChange={aggiornaLeader} style={{ width: '100%', marginTop: '0.5rem' }} /></label>
+            <label> Telefono <input name="telefono" type="tel" value={datiLeader.telefono} onChange={aggiornaLeader} style={{ width: '100%', marginTop: '0.5rem' }} /></label>
+            <label> Username <input name="username" value={datiLeader.username} onChange={aggiornaLeader} autoComplete="off" required style={{ width: '100%', marginTop: '0.5rem' }} /></label>
+            <label> Password <input name="password" type="password" value={datiLeader.password} onChange={aggiornaLeader} autoComplete="new-password" minLength={8} required style={{ width: '100%', marginTop: '0.5rem' }} /></label>
           </div>
 
-          {/* SEZIONE MEMBRI AGGIUNTIVI */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', marginBottom: '1.5rem' }}>
-            <h3 style={{ margin: 0, color: 'var(--primary)' }}>Membri del Gruppo (Opzionale)</h3>
+            <h3 style={{ margin: 0, color: 'var(--primary)' }}>Membri del Gruppo (Senza account)</h3>
             <button type="button" onClick={aggiungiMembro} style={{ padding: '0.25rem 0.75rem', fontSize: '0.9rem' }}>
               + Aggiungi Membro
             </button>
@@ -147,72 +187,53 @@ export default function GestioneOspiti() {
               </button>
               <h4 style={{ marginTop: 0, marginBottom: '1rem' }}>Membro #{index + 1}</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <label> Nome <input name="nome" value={membro.nome} onChange={(e) => aggiornaMembro(index, e)} required /></label>
-                <label> Cognome <input name="cognome" value={membro.cognome} onChange={(e) => aggiornaMembro(index, e)} required /></label>
-                <label> Email <input name="email" type="email" value={membro.email} onChange={(e) => aggiornaMembro(index, e)} /></label>
-                <label> Telefono <input name="telefono" type="tel" value={membro.telefono} onChange={(e) => aggiornaMembro(index, e)} /></label>
-                <label> Username <input name="username" value={membro.username} onChange={(e) => aggiornaMembro(index, e)} autoComplete="off" required /></label>
-                <label> Password <input name="password" type="password" value={membro.password} onChange={(e) => aggiornaMembro(index, e)} autoComplete="new-password" minLength={8} required /></label>
+                <label> Nome <input name="nome" value={membro.nome} onChange={(e) => aggiornaMembro(index, e)} required style={{ width: '100%', marginTop: '0.5rem' }} /></label>
+                <label> Cognome <input name="cognome" value={membro.cognome} onChange={(e) => aggiornaMembro(index, e)} required style={{ width: '100%', marginTop: '0.5rem' }} /></label>
               </div>
             </div>
           ))}
 
-          {errore && <p style={{ color: '#ef4444', marginTop: '1.5rem' }} role="alert">{errore}</p>}
-          {successo && <p style={{ color: '#10b981', marginTop: '1.5rem' }} role="status">{successo}</p>}
+          {errore && <p style={{ color: '#ef4444', marginTop: '1.5rem', marginBottom: 0 }} role="alert">{errore}</p>}
+          {successo && <p style={{ color: '#10b981', marginTop: '1.5rem', marginBottom: 0 }} role="status">{successo}</p>}
 
           <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
             <button type="submit" disabled={inInvio} style={{ minWidth: '150px' }}>
-              {inInvio ? 'Creazione in corso...' : 'Salva Ospite / Gruppo'}
+              {inInvio ? 'Salvataggio...' : 'Salva Ospite / Gruppo'}
             </button>
           </div>
         </form>
-      </div>
-
-      {/* SEZIONE 2: ELENCO E RICERCA */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h1>Gestione Ospiti e Gruppi</h1>
-        <input 
-          type="text" 
-          placeholder="Cerca per nome, cognome o username..." 
-          value={ricerca}
-          onChange={(e) => setRicerca(e.target.value)}
-          style={{ padding: '0.5rem', width: '100%', maxWidth: '300px', borderRadius: '4px', border: '1px solid var(--border)' }}
-        />
-      </div>
+      </Modal>
 
       <div className="card">
         <div className="table-container">
           <table>
             <thead>
               <tr>
-                <th style={{ width: '40px' }}></th> {/* Colonna per la freccina di espansione */}
-                <th>Cognome</th>
-                <th>Nome</th>
-                <th>Username</th>
-                <th>Email</th>
-                <th>Telefono</th>
+                <th style={{ width: '40px' }}></th> 
+                <th onClick={() => requestSort('cognome')} style={{ cursor: 'pointer' }}>Cognome{getSortIcon('cognome')}</th>
+                <th onClick={() => requestSort('nome')} style={{ cursor: 'pointer' }}>Nome{getSortIcon('nome')}</th>
+                <th onClick={() => requestSort('username')} style={{ cursor: 'pointer' }}>Username{getSortIcon('username')}</th>
+                <th onClick={() => requestSort('email')} style={{ cursor: 'pointer' }}>Email{getSortIcon('email')}</th>
+                <th onClick={() => requestSort('telefono')} style={{ cursor: 'pointer' }}>Telefono{getSortIcon('telefono')}</th>
               </tr>
             </thead>
             <tbody>
-              {leaderList.length === 0 ? (
+              {ospitiOrdinati.length === 0 ? (
                 <tr>
                   <td colSpan="6" style={{ textAlign: 'center', padding: '2rem' }}>
                     Nessun ospite trovato.
                   </td>
                 </tr>
               ) : (
-                leaderList.map((leader) => {
-                  // Cerco se questo leader ha membri associati (cercando nell'array originale, non in quello filtrato)
-                  const membriDelGruppo = ospiti.filter(o => o.id_capogruppo === leader.id);
-                  const haMembri = membriDelGruppo.length > 0;
+                ospitiOrdinati.map((leader) => {
+                  const haMembri = leader.membri && leader.membri.length > 0;
                   const isEspanso = espansi[leader.id];
 
                   return (
                     <React.Fragment key={leader.id}>
-                      {/* RIGA LEADER */}
                       <tr 
                         onClick={() => navigate(`/profile/${leader.id}`)}
-                        style={{ cursor: 'pointer', background: haMembri ? '#f8fafc' : 'transparent' }}
+                        style={{ cursor: 'pointer', background: haMembri ? 'var(--bg-highlight, #f8fafc)' : 'transparent' }}
                         title="Clicca per visualizzare il profilo"
                       >
                         <td style={{ textAlign: 'center' }}>
@@ -225,26 +246,24 @@ export default function GestioneOspiti() {
                             </button>
                           )}
                         </td>
-                        <td><strong>{leader.cognome}</strong> {haMembri && <span style={{fontSize:'0.8rem', color:'#64748b'}}>(Gruppo)</span>}</td>
+                        <td><strong>{leader.cognome}</strong> {haMembri && <span style={{fontSize:'0.8rem', color:'var(--text-muted, #64748b)'}}>({leader.membri.length} membri)</span>}</td>
                         <td><strong>{leader.nome}</strong></td>
                         <td>{leader.username}</td>
                         <td>{leader.email || '-'}</td>
                         <td>{leader.telefono || '-'}</td>
                       </tr>
 
-                      {/* RIGHE MEMBRI (visibili solo se espanso) */}
-                      {isEspanso && membriDelGruppo.map((membro) => (
+                      {isEspanso && leader.membri.map((membro) => (
                         <tr 
-                          key={membro.id}
-                          onClick={() => navigate(`/profile/${membro.id}`)}
-                          style={{ cursor: 'pointer', backgroundColor: '#f1f5f9' }}
+                          key={membro.id || Math.random()}
+                          style={{ backgroundColor: 'var(--bg-subrow, #f1f5f9)' }}
                         >
                           <td style={{ textAlign: 'center' }}>↳</td>
                           <td style={{ paddingLeft: '2rem' }}>{membro.cognome}</td>
                           <td>{membro.nome}</td>
-                          <td>{membro.username}</td>
-                          <td>{membro.email || '-'}</td>
-                          <td>{membro.telefono || '-'}</td>
+                          <td style={{ color: '#94a3b8', fontStyle: 'italic' }}>-</td>
+                          <td style={{ color: '#94a3b8', fontStyle: 'italic' }}>-</td>
+                          <td style={{ color: '#94a3b8', fontStyle: 'italic' }}>-</td>
                         </tr>
                       ))}
                     </React.Fragment>

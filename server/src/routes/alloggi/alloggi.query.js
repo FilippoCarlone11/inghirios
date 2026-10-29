@@ -5,7 +5,7 @@ import { pool } from '../../db.js';
 // ==========================================
 export async function elencoAlloggi() {
   const query = `
-    SELECT id, nome, indirizzo, orario_checkin_standard, orario_checkout_standard
+    SELECT id, nome, indirizzo
     FROM alloggio ORDER BY nome;
   `;
   const { rows } = await pool.query(query);
@@ -30,15 +30,13 @@ export async function cercaAlloggio(id) {
 // ==========================================
 export async function aggiungiAlloggio(dati) {
     const query = `
-      INSERT INTO alloggio (nome, indirizzo, orario_checkin_standard, orario_checkout_standard)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO alloggio (nome, indirizzo)
+      VALUES ($1, $2)
       RETURNING *;
     `;
     const valori = [
       dati.nome, 
-      dati.indirizzo,
-      dati.orario_checkin_standard || '14:00',
-      dati.orario_checkout_standard || '10:00'
+      dati.indirizzo
     ];
     const { rows } = await pool.query(query, valori);
     return rows[0];
@@ -108,12 +106,10 @@ export async function elencoCamereAlloggio(id_alloggio) {
 // ==========================================
 // ELENCO OCCUPAZIONI (Chi dorme dove in un B&B)
 // ==========================================
-// Aggiungi orario_checkin e checkout alla SELECT
 export async function elencoOccupazioniAlloggio(id_alloggio) {
   const query = `
     SELECT 
       o.id, o.id_camera, o.id_persona, o.data, 
-      o.orario_checkin, o.orario_checkout,
       o.rimborso_completo, o.rimborso_50,
       p.nome AS nome_persona, p.cognome AS cognome_persona
     FROM occupazione_alloggio o
@@ -126,8 +122,6 @@ export async function elencoOccupazioniAlloggio(id_alloggio) {
   return rows;
 }
 
-
-
 // ==========================================
 // AGGIUNGI OCCUPAZIONE (Assegna persona a camera)
 // ==========================================
@@ -135,14 +129,13 @@ export async function aggiungiOccupazione(dati) {
   const query = `
     WITH nuova_occupazione AS (
       INSERT INTO occupazione_alloggio (
-        id_camera, id_persona, data, orario_checkin, orario_checkout
+        id_camera, id_persona, data
       )
-      VALUES ($1, $2, $3, $4, $5)
+      VALUES ($1, $2, $3)
       RETURNING *
     )
     SELECT 
       n.id, n.id_camera, n.id_persona, n.data, 
-      n.orario_checkin, n.orario_checkout,
       n.rimborso_completo, n.rimborso_50,
       p.nome AS nome_persona, p.cognome AS cognome_persona
     FROM nuova_occupazione n
@@ -152,21 +145,32 @@ export async function aggiungiOccupazione(dati) {
   const valori = [
     dati.id_camera, 
     dati.id_persona, 
-    dati.data, 
-    dati.orario_checkin, 
-    dati.orario_checkout
+    dati.data
   ];
   const { rows } = await pool.query(query, valori);
   return rows[0];
 }
 
-export async function getRegoleAlloggioByCamera(id_camera) {
+// ==========================================
+// TROVA ALLOGGIO PER UTENTE ID
+// ==========================================
+export async function trovaAlloggioPerUtenteID(id_persona) {
   const query = `
-    SELECT a.orario_checkin_standard, a.orario_checkout_standard 
-    FROM camera c
+    SELECT 
+      a.id AS id_alloggio,
+      a.nome AS nome_alloggio,
+      a.indirizzo,
+      c.id AS id_camera,
+      c.posti_letto,
+      o.id AS id_occupazione,
+      o.data
+    FROM occupazione_alloggio o
+    JOIN camera c ON o.id_camera = c.id
     JOIN alloggio a ON c.id_alloggio = a.id
-    WHERE c.id = $1;
+    WHERE o.id_persona = $1
+    ORDER BY o.data ASC;
   `;
-  const { rows } = await pool.query(query, [id_camera]);
-  return rows[0];
+  
+  const { rows } = await pool.query(query, [id_persona]);
+  return rows; 
 }
