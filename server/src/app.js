@@ -9,6 +9,7 @@ import bigliettiRotte from './routes/biglietti/biglietti.rotte.js';
 import transferRotte from './routes/transfer/transfer.rotte.js';
 import alloggiRotte from './routes/alloggi/alloggi.rotte.js';
 import { nonTrovato, gestoreErrori } from './middleware/errors.js';
+import path from 'path';
 
 export const app = express();
 
@@ -31,4 +32,5 @@ app.use('/api/transfer', transferRotte);
 app.use('/api/alloggi', alloggiRotte);
 
 app.use('/api', nonTrovato);
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 app.use(gestoreErrori);

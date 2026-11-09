@@ -92,3 +92,28 @@ export async function modificaTransfer(id, dati) {
   const { rows } = await pool.query(query, valori);
   return rows[0]; // Restituisce il transfer aggiornato e formattato
 }
+
+export async function eliminaTransfer(id) {
+  const query = `DELETE FROM transfer WHERE id = $1;`;
+  const { rowCount } = await pool.query(query, [id]);
+  return rowCount > 0;
+}
+
+
+export async function elencoTrasfersUtente(id_utente){
+  const { rows } = await pool.query(`
+    SELECT 
+      t.id_biglietto,
+      p.nome AS nome_runner,
+      p.cognome AS cognome_runner,
+      t.id_persona_da_trasferire, 
+      t.orario_pickup, 
+      t.luogo_pickup, 
+      t.luogo_destinazione
+    FROM transfer t
+    LEFT JOIN persone p ON t.id_runner = p.id 
+    WHERE t.id_persona_da_trasferire = $1
+    ORDER BY t.orario_pickup ASC NULLS LAST
+  `, [id_utente]);
+  return rows;
+}

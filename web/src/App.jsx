@@ -14,6 +14,7 @@ import GestioneLiberatorie from './pages/accounts/gestione-liberatorie.jsx';
 import GestioneAlloggi from './pages/alloggi/gestione-alloggi.jsx';
 import GestioneAccompagnatori from './pages/accounts/gestione-accompagnatori.jsx';
 import GestioneOspiti from './pages/accounts/gestione-ospiti.jsx';
+import Rubrica from './pages/accounts/rubrica.jsx';
 
 export default function App() {
   return (
@@ -40,7 +41,8 @@ export default function App() {
           <Route path="/gestione-alloggi" element={<GestioneAlloggi />} />
           <Route path="/gestione-accompagnatori" element={<GestioneAccompagnatori />} />
           <Route path="/gestione-ospiti" element={<GestioneOspiti />} />
-          <Route path="/profile/:id" element={<Profilo />} />
+          <Route path="/profile/:username" element={<Profilo />} />
+          <Route path="/rubrica" element={<Rubrica />} />
         </Route>
 
       </Route>

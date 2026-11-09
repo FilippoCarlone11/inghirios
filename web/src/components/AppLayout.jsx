@@ -7,7 +7,7 @@ import {
   Wallet, Star, Calculator, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { useAuth } from '../AuthContext.jsx';
-import logo from '../assets/logo-premio.jpg';
+import logo from '../assets/logo-premio.png';
 
 const GRUPPI = [
   [
@@ -16,7 +16,7 @@ const GRUPPI = [
     { to: '/gestione-alloggi', sardo: 'Domo mia', it: 'Alloggi', Icona: BedDouble },
   ],
   [
-    { to: '/rubrica', sardo: 'Cuntatos', it: 'Rubrica', Icona: BookUser, disabled: true }, // Esempio di menu disabilitato
+    { to: '/rubrica', sardo: 'Cuntatos', it: 'Rubrica', Icona: BookUser },
     { to: '/gestione-transfer', sardo: 'Biàgiu', it: 'Transfer', Icona: Bus },
     { to: '/gestione-liberatorie', sardo: 'Firmas', it: 'Liberatorie', Icona: FileSignature },
     { to: '/gestione-rimborsi', sardo: 'Rimbursos', it: 'Rimborsi', Icona: Wallet, disabled: true },
@@ -37,7 +37,7 @@ const GRUPPI = [
       subItems: [
         { to: '/contabilita/alloggi', sardo: 'Contos Domo', it: 'Alloggi', Icona: BedDouble },
         { to: '/contabilita/biglietti', sardo: 'Contos Billetes', it: 'Biglietti', Icona: Ticket },
-        { to: '/contabilita/altro', sardo: 'Àteru', it: 'Altro', Icona: Wallet, disabled: true } // Altro elemento disabilitato
+        { to: '/contabilita/altro', sardo: 'Àteru', it: 'Altro', Icona: Wallet, disabled: true }
       ]
       , disabled: true
     }

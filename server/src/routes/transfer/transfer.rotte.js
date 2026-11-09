@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { richiediAuth } from '../../middleware/authentication.js';
 import { richiediRuolo } from '../../middleware/authorization.js';
 import { ErroreHttp } from '../../middleware/errors.js';
-import { elencoTransferRegistrati, modificaTransfer, aggiungiTransfer } from './transfer.query.js';
+import { elencoTransferRegistrati, modificaTransfer, aggiungiTransfer, elencoTrasfersUtente } from './transfer.query.js';
 import { RUOLI } from '../../ruoli.js';
 
 const router = Router();
@@ -91,5 +91,41 @@ router.put('/modifica-transfer/:id', richiediAuth, richiediRuolo(RUOLI.ADMIN), a
     console.error("ERRORE MODIFICA TRANSFER:", err); 
     next(err); 
   }
+});
+
+router.delete('/elimina-transfer/:id', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res, next) => {
+  try {
+    const id_transfer = Number(req.params.id);
+    if (!id_transfer) {
+      throw new ErroreHttp(400, 'ID Transfer mancante o non valido');
+    }
+
+    const transferEliminato = await eliminaTransfer(id_transfer); // Richiede l'aggiunta in transfer.query.js
+
+    if (!transferEliminato) {
+      throw new ErroreHttp(404, 'Transfer non trovato');
+    }
+
+    res.status(200).json({ success: true, message: 'Transfer eliminato con successo' });
+  } catch (err) {
+    console.error("ERRORE ELIMINAZIONE TRANSFER:", err);
+    next(err);
+  }
+});
+
+router.get('elenco-transfer-utente/:id', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res, next) => {
+  try {
+    const { id_utente } = req.params;
+    const transfers = await elencoTrasfersUtente(id_utente);
+
+    res.status(200).json({ 
+      id_utente,
+      transfers
+    });
+  } catch (err) {
+    console.error("ERRORE RECUPERO TRANSFER:", err); 
+    next(err); 
+  }
+
 });
 export default router;

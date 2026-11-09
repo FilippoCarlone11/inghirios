@@ -310,6 +310,113 @@ th {
 }
 
 /* ==========================================
+   TABELLA BIGLIETTI (gestione-biglietti.jsx)
+   Righe a "scheda", stato a pillola colorata, bottoni con testo
+   ========================================== */
+.bg-tabella {
+  border-collapse: separate;
+  border-spacing: 0 8px;
+}
+
+.bg-tabella th {
+  background: transparent;
+  border-bottom: none;
+  padding: 0 0.75rem 0.25rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.bg-tabella td {
+  background: var(--surface);
+  padding: 0.75rem;
+  vertical-align: middle;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.bg-tabella td:first-child { border-left: 1px solid var(--border); border-radius: var(--radius) 0 0 var(--radius); }
+.bg-tabella td:last-child  { border-right: 1px solid var(--border); border-radius: 0 var(--radius) var(--radius) 0; }
+.bg-tabella tbody tr:hover td { background: #f7f4ee; }
+
+.bg-ospite { font-weight: 600; }
+.bg-sub { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+.bg-vuoto { text-align: center; color: var(--text-muted); padding: 2rem 0; }
+
+/* Tratta: BGY → ARN */
+.bg-tratta { display: flex; align-items: center; gap: 10px; }
+.bg-iata {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  color: var(--primary);
+}
+.bg-freccia { color: var(--gold); font-size: 1.2rem; }
+
+/* Chip codici */
+.bg-chip {
+  display: inline-block;
+  margin: 3px 4px 0 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: #ece9e2;
+  color: var(--text-main);
+}
+.bg-chip.bg-warn { background: #f6e2c4; color: #7a4a00; }
+
+.bg-costo { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Stato: select a pillola (sovrascrive lo stile globale di select) */
+.bg-stato {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+  border: none;
+  cursor: pointer;
+  padding: 6px 28px 6px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23475569' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+.bg-stato:focus { box-shadow: none; }
+.bg-stato:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+.stato-comprato           { background-color: #dde6f0; color: #1e3a5f; }
+.stato-in_ritardo         { background-color: #f6e7c1; color: #7a5200; }
+.stato-arrivato           { background-color: #d9ecdc; color: #1f5a2e; }
+.stato-cancellato         { background-color: #f4d6d6; color: #7a1f1f; }
+.stato-rimborso_richiesto { background-color: #e6dcef; color: #4b2a6b; }
+.stato-rimborso_ottenuto  { background-color: #d3ebe6; color: #14544a; }
+
+/* Azioni */
+.bg-azioni { display: flex; gap: 6px; justify-content: flex-end; }
+
+.bg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: var(--surface);
+  color: var(--text-main);
+  border: 1px solid var(--border);
+}
+.bg-btn:hover { background: #f1ede5; }
+.bg-btn.bg-del { color: #b42318; border-color: #e8b4ae; }
+.bg-btn.bg-del:hover { background: #fbeceb; }
+
+.bg-link { color: var(--primary); font-weight: 600; text-decoration: none; white-space: nowrap; }
+.bg-link:hover { text-decoration: underline; }
+
+/* ==========================================
    SCHERMI STRETTI (telefono / tablet)
    ========================================== */
 @media (max-width: 800px) {

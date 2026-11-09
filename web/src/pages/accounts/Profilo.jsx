@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../api.js';
 
 export default function Profilo() {
-  const { id } = useParams();
+  const { username } = useParams();
   const navigate = useNavigate();
 
   const [datiProfilo, setDatiProfilo] = useState(null);
@@ -12,7 +12,7 @@ export default function Profilo() {
 
   useEffect(() => {
     setCaricamento(true);
-    api(`/profile/${id}`)
+    api(`/profile/${username}`)
       .then((dati) => {
         setDatiProfilo(dati);
       })
@@ -22,7 +22,7 @@ export default function Profilo() {
       .finally(() => {
         setCaricamento(false);
       });
-  }, [id]);
+  }, [username]);
 
   if (caricamento) return <p style={{ padding: '2rem' }}>Caricamento profilo in corso...</p>;
   if (errore) return <p style={{ padding: '2rem', color: '#ef4444' }}>Errore: {errore}</p>;
@@ -34,7 +34,8 @@ export default function Profilo() {
     membriGruppo, 
     accompagnatori, 
     alloggio, 
-    biglietti 
+    biglietti,
+    transfer
   } = datiProfilo;
 
   // LOGICA DI RAGGRUPPAMENTO NOTTI (crea soggiorni continui da notti singole)
@@ -118,8 +119,8 @@ export default function Profilo() {
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginTop: '1rem' }}>
             {/* Doppio controllo (tipo_giuria o tipo_giudice) per prendere il campo corretto dal DB */}
-            <div><strong>Tipo Giuria:</strong> <br/>{datiGiurato.tipo_giuria || datiGiurato.tipo_giudice || '-'}</div>
-            <div><strong>Partecipazione:</strong> <br/>{datiGiurato.partecipazione || datiGiurato.tipo_partecipazione || '-'}</div>
+            <div><strong>Tipo Giuria:</strong> <br/>{datiGiurato.tipo_giuria || '-'}</div>
+            <div><strong>Partecipazione:</strong> <br/>{datiGiurato.partecipazione || '-'}</div>
             <div><strong>Emittente:</strong> <br/>{datiGiurato.emittente || '-'}</div>
             <div><strong>Mezzo Info:</strong> <br/>{datiGiurato.mezzo_di_informazione || '-'}</div>
             <div><strong>Liberatoria:</strong> <br/>{datiGiurato.liberatoria_consegnata ? '✅ Consegnata' : '❌ Non consegnata'}</div>
@@ -145,6 +146,7 @@ export default function Profilo() {
       )}
 
       {/* SEZIONE ACCOMPAGNATORI */}
+      {accompagnatori.lenght > 0 && (
       <div className="card" style={{ marginBottom: '2rem' }}>
         <h3 style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', marginTop: 0, color: 'var(--primary)' }}>
           Accompagnatori
@@ -161,6 +163,7 @@ export default function Profilo() {
           </ul>
         )}
       </div>
+      )}
 
       {/* SEZIONE ALLOGGIO RAGGRUPPATO */}
       {soggiorniRaggruppati.length > 0 && (
@@ -191,6 +194,51 @@ export default function Profilo() {
                     </td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* SEZIONE TRANSFER */}
+      {transfer && transfer.length > 0 && (
+        <div className="card" style={{ marginBottom: '2rem', borderLeft: '4px solid #8b5cf6' }}>
+          <h3 style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', marginTop: 0, color: '#8b5cf6' }}>
+            Transfer Organizzati
+          </h3>
+          <div className="table-container" style={{ marginTop: '1rem' }}>
+            <table>
+              <thead>
+                <tr>
+                  <th>Data e Ora</th>
+                  <th>Punto di Partenza</th>
+                  <th>Destinazione</th>
+                  <th>Runner Assegnato</th>
+                </tr>
+              </thead>
+              <tbody>
+                {transfer.map((t, index) => {
+                  const dataGrezza = new Date(t.orario_pickup);
+                  const dataFormattata = isNaN(dataGrezza.getTime()) 
+                    ? '-' 
+                    : dataGrezza.toLocaleString('it-IT', { 
+                        day: '2-digit', month: '2-digit', year: 'numeric', 
+                        hour: '2-digit', minute: '2-digit' 
+                      });
+
+                  return (
+                    <tr key={index}>
+                      <td><strong>{dataFormattata}</strong></td>
+                      <td>{t.luogo_pickup || '-'}</td>
+                      <td>{t.luogo_destinazione || '-'}</td>
+                      <td>
+                        {t.nome_runner || t.cognome_runner 
+                          ? `${t.nome_runner || ''} ${t.cognome_runner || ''}`.trim() 
+                          : <span style={{ color: '#f59e0b', fontStyle: 'italic' }}>Da assegnare</span>}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

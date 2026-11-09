@@ -5,6 +5,7 @@ import Modal from './Modal';
 import { useSortableData } from './useSortableData';
 
 const FORM_LEADER = {
+  id: '',
   username: '',
   nome: '',
   cognome: '',
@@ -14,23 +15,19 @@ const FORM_LEADER = {
   ruolo: 'ospite',
 };
 
-const FORM_MEMBRO = {
-  nome: '',
-  cognome: '',
-};
+const FORM_MEMBRO = { id: null, nome: '', cognome: '' };
 
 export default function GestioneOspiti() {
   const navigate = useNavigate();
   
-  // STATI DEL FORM
   const [datiLeader, setDatiLeader] = useState(FORM_LEADER);
   const [membri, setMembri] = useState([]); 
   const [errore, setErrore] = useState('');
   const [successo, setSuccesso] = useState('');
   const [inInvio, setInInvio] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
   
-  // STATI DELL'ELENCO
   const [ospiti, setOspiti] = useState([]);
   const [ricerca, setRicerca] = useState('');
   const [espansi, setEspansi] = useState({});
@@ -41,11 +38,8 @@ export default function GestioneOspiti() {
       .catch((err) => setErrore(err.message));
   }
 
-  useEffect(() => {
-    caricaOspiti();
-  }, []);
+  useEffect(() => { caricaOspiti(); }, []);
 
-  // GESTIONE FORM
   function aggiornaLeader(evento) {
     const { name, value } = evento.target;
     setDatiLeader((prec) => ({ ...prec, [name]: value }));
@@ -66,24 +60,56 @@ export default function GestioneOspiti() {
     setMembri(nuoviMembri);
   }
 
+  function apriModalModifica(leader, evento) {
+    evento.stopPropagation();
+    setErrore('');
+    setSuccesso('');
+    setIsEditMode(true);
+    setDatiLeader({
+      id: leader.id,
+      username: leader.username || '',
+      nome: leader.nome || '',
+      cognome: leader.cognome || '',
+      email: leader.email || '',
+      telefono: leader.telefono || '',
+      password: '',
+      ruolo: 'ospite'
+    });
+    setMembri(leader.membri ? leader.membri.map(m => ({ id: m.id, nome: m.nome, cognome: m.cognome })) : []);
+    setIsModalOpen(true);
+  }
+
   async function invia(evento) {
     evento.preventDefault();
     setErrore('');
     setSuccesso('');
     setInInvio(true);
     
+    const payloadLeader = { ...datiLeader };
+    if (isEditMode && !payloadLeader.password) {
+      delete payloadLeader.password;
+    }
+
     try {
       const payload = {
-        leader: datiLeader,
+        leader: payloadLeader,
         membri: membri
       };
 
-      await api('/profile/aggiungi-ospite-gruppo', {
-        metodo: 'POST',
+      let endpoint = '/profile/aggiungi-ospite-gruppo';
+      let metodo = 'POST';
+
+      if (isEditMode) {
+        endpoint = `/profile/modifica-ospite-gruppo/${datiLeader.id}`;
+        metodo = 'PUT';
+      }
+
+      await api(endpoint, {
+        metodo: metodo,
         corpo: payload,
       });
       
-      setSuccesso(`Ospite/Gruppo creato con successo!`);
+      setSuccesso(`Ospite/Gruppo ${isEditMode ? 'aggiornato' : 'creato'} con successo!`);
       setDatiLeader(FORM_LEADER);
       setMembri([]);
       caricaOspiti();
@@ -100,7 +126,30 @@ export default function GestioneOspiti() {
     }
   }
 
-  // GESTIONE TABELLA, RICERCA E ORDINAMENTO
+  async function elimina(id, evento) {
+    evento.stopPropagation();
+    if (!window.confirm('Sei sicuro di voler eliminare questo elemento? Questa azione non può essere annullata.')) {
+      return;
+    }
+    try {
+      await api(`/profile/${id}`, { metodo: 'DELETE' });
+      caricaOspiti();
+    } catch (err) {
+      setErrore(`Errore durante l'eliminazione: ${err.message}`);
+    }
+  }
+  
+  async function eliminaMembroOspite(idMembro, evento) {
+    evento.stopPropagation();
+    if (!window.confirm('Eliminare questo membro dal gruppo?')) return;
+    try {
+      await api(`/profile/elimina-membro-ospite/${idMembro}`, { metodo: 'DELETE' });
+      caricaOspiti();
+    } catch (err) {
+      setErrore(err.message);
+    }
+  }
+
   const toggleEspandi = (id, evento) => {
     evento.stopPropagation();
     setEspansi((prec) => ({ ...prec, [id]: !prec[id] }));
@@ -108,17 +157,13 @@ export default function GestioneOspiti() {
 
   const ospitiFiltrati = ospiti.filter((o) => {
     const termine = ricerca.toLowerCase();
-    
-    const matchLeader = 
-      (o.nome && o.nome.toLowerCase().includes(termine)) ||
-      (o.cognome && o.cognome.toLowerCase().includes(termine)) ||
-      (o.username && o.username.toLowerCase().includes(termine));
-
+    const matchLeader = (o.nome && o.nome.toLowerCase().includes(termine)) ||
+                        (o.cognome && o.cognome.toLowerCase().includes(termine)) ||
+                        (o.username && o.username.toLowerCase().includes(termine));
     const matchMembri = o.membri && o.membri.some((m) => 
       (m.nome && m.nome.toLowerCase().includes(termine)) ||
       (m.cognome && m.cognome.toLowerCase().includes(termine))
     );
-
     return matchLeader || matchMembri;
   });
 
@@ -132,7 +177,7 @@ export default function GestioneOspiti() {
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <h1 style={{ margin: 0 }}>Gestione Ospiti e Gruppi</h1>
+        <h1 style={{ margin: 0 }}>Gestione Ospiti</h1>
         
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           <input 
@@ -146,6 +191,9 @@ export default function GestioneOspiti() {
             onClick={() => {
               setErrore('');
               setSuccesso('');
+              setIsEditMode(false);
+              setDatiLeader(FORM_LEADER);
+              setMembri([]);
               setIsModalOpen(true);
             }} 
             style={{ padding: '0.6rem 1rem', whiteSpace: 'nowrap' }}
@@ -155,7 +203,7 @@ export default function GestioneOspiti() {
         </div>
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} titolo="Aggiungi Ospite / Gruppo">
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} titolo={isEditMode ? "Modifica Ospite / Gruppo" : "Aggiungi Ospite / Gruppo"}>
         <form onSubmit={invia} style={{ display: 'flex', flexDirection: 'column' }}>
           <h3 style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', marginBottom: '1.5rem', color: 'var(--primary)' }}>
             Dati Ospite Principale (Account)
@@ -166,7 +214,10 @@ export default function GestioneOspiti() {
             <label> Email <input name="email" type="email" value={datiLeader.email} onChange={aggiornaLeader} style={{ width: '100%', marginTop: '0.5rem' }} /></label>
             <label> Telefono <input name="telefono" type="tel" value={datiLeader.telefono} onChange={aggiornaLeader} style={{ width: '100%', marginTop: '0.5rem' }} /></label>
             <label> Username <input name="username" value={datiLeader.username} onChange={aggiornaLeader} autoComplete="off" required style={{ width: '100%', marginTop: '0.5rem' }} /></label>
-            <label> Password <input name="password" type="password" value={datiLeader.password} onChange={aggiornaLeader} autoComplete="new-password" minLength={8} required style={{ width: '100%', marginTop: '0.5rem' }} /></label>
+            <label> Password 
+              <input name="password" type="password" value={datiLeader.password} onChange={aggiornaLeader} autoComplete="new-password" minLength={8} required={!isEditMode} style={{ width: '100%', marginTop: '0.5rem' }} />
+              {isEditMode && <small style={{ color: 'var(--text-muted)' }}>Lascia vuoto per non modificare</small>}
+            </label>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', marginBottom: '1.5rem' }}>
@@ -198,7 +249,7 @@ export default function GestioneOspiti() {
 
           <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
             <button type="submit" disabled={inInvio} style={{ minWidth: '150px' }}>
-              {inInvio ? 'Salvataggio...' : 'Salva Ospite / Gruppo'}
+              {inInvio ? 'Salvataggio...' : (isEditMode ? 'Salva Modifiche' : 'Salva Ospite / Gruppo')}
             </button>
           </div>
         </form>
@@ -215,15 +266,12 @@ export default function GestioneOspiti() {
                 <th onClick={() => requestSort('username')} style={{ cursor: 'pointer' }}>Username{getSortIcon('username')}</th>
                 <th onClick={() => requestSort('email')} style={{ cursor: 'pointer' }}>Email{getSortIcon('email')}</th>
                 <th onClick={() => requestSort('telefono')} style={{ cursor: 'pointer' }}>Telefono{getSortIcon('telefono')}</th>
+                <th style={{ width: '80px', textAlign: 'center' }}>Azioni</th>
               </tr>
             </thead>
             <tbody>
               {ospitiOrdinati.length === 0 ? (
-                <tr>
-                  <td colSpan="6" style={{ textAlign: 'center', padding: '2rem' }}>
-                    Nessun ospite trovato.
-                  </td>
-                </tr>
+                <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>Nessun ospite trovato.</td></tr>
               ) : (
                 ospitiOrdinati.map((leader) => {
                   const haMembri = leader.membri && leader.membri.length > 0;
@@ -232,7 +280,7 @@ export default function GestioneOspiti() {
                   return (
                     <React.Fragment key={leader.id}>
                       <tr 
-                        onClick={() => navigate(`/profile/${leader.id}`)}
+                        onClick={() => navigate(`/profile/${leader.username}`)}
                         style={{ cursor: 'pointer', background: haMembri ? 'var(--bg-highlight, #f8fafc)' : 'transparent' }}
                         title="Clicca per visualizzare il profilo"
                       >
@@ -251,19 +299,21 @@ export default function GestioneOspiti() {
                         <td>{leader.username}</td>
                         <td>{leader.email || '-'}</td>
                         <td>{leader.telefono || '-'}</td>
+                        <td style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }} onClick={(e) => e.stopPropagation()}>
+                          <button onClick={(e) => apriModalModifica(leader, e)} style={{ padding: '0.2rem 0.5rem', fontSize: '0.9rem' }}>✎</button>
+                          <button onClick={(e) => elimina(leader.id, e)} style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', padding: '0.2rem 0.5rem' }}>✕</button>
+                        </td>
                       </tr>
 
                       {isEspanso && leader.membri.map((membro) => (
-                        <tr 
-                          key={membro.id || Math.random()}
-                          style={{ backgroundColor: 'var(--bg-subrow, #f1f5f9)' }}
-                        >
+                        <tr key={membro.id || Math.random()} style={{ backgroundColor: 'var(--bg-subrow, #f1f5f9)' }}>
                           <td style={{ textAlign: 'center' }}>↳</td>
                           <td style={{ paddingLeft: '2rem' }}>{membro.cognome}</td>
                           <td>{membro.nome}</td>
-                          <td style={{ color: '#94a3b8', fontStyle: 'italic' }}>-</td>
-                          <td style={{ color: '#94a3b8', fontStyle: 'italic' }}>-</td>
-                          <td style={{ color: '#94a3b8', fontStyle: 'italic' }}>-</td>
+                          <td colSpan="3" style={{ color: '#94a3b8', fontStyle: 'italic' }}>-</td>
+                          <td style={{ textAlign: 'center' }}>
+                            <button onClick={(e) => eliminaMembroOspite(membro.id, e)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.2rem' }}>✕</button>
+                          </td>
                         </tr>
                       ))}
                     </React.Fragment>

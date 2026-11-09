@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../api.js';
-import Modal from './Modal'; // <-- Modifica il percorso se necessario
-import { useSortableData } from './useSortableData'; // <-- Modifica il percorso se necessario
+import Modal from './Modal';
+import { useSortableData } from './useSortableData';
 
 const FORM_VUOTO = {
-  id_accompagnatore: '', 
+  id: '',
+  id_persona: '', 
   nome: '',
   cognome: ''
 };
@@ -21,7 +22,8 @@ export default function GestioneAccompagnatori() {
   const [accompagnatori, setAccompagnatori] = useState([]);
   
   const [ricerca, setRicerca] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false); // Gestione popup
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   function caricaDati() {
     api('/profile/elenco-persone')
@@ -42,6 +44,20 @@ export default function GestioneAccompagnatori() {
     setDati((precedenti) => ({ ...precedenti, [name]: value }));
   }
 
+  function apriModalModifica(accompagnatore, evento) {
+    evento.stopPropagation();
+    setErrore('');
+    setSuccesso('');
+    setIsEditMode(true);
+    setDati({
+      id: accompagnatore.id,
+      id_persona: accompagnatore.id_persona || '',
+      nome: accompagnatore.nome_accompagnatore || '',
+      cognome: accompagnatore.cognome_accompagnatore || ''
+    });
+    setIsModalOpen(true);
+  }
+
   async function invia(evento) {
     evento.preventDefault();
     setErrore('');
@@ -49,20 +65,29 @@ export default function GestioneAccompagnatori() {
     setInInvio(true);
     
     const datiFormattati = {
-      ...dati,
-      id_accompagnatore: dati.id_accompagnatore ? Number(dati.id_accompagnatore) : null
+      nome: dati.nome,
+      cognome: dati.cognome,
+      id_persona: dati.id_persona ? Number(dati.id_persona) : null
     };
 
     try {
-      const creato = await api('/profile/aggiungi-accompagnatore', {
-        metodo: 'POST',
+      let endpoint = '/profile/aggiungi-accompagnatore';
+      let metodo = 'POST';
+
+      if (isEditMode) {
+        endpoint = `/profile/modifica-accompagnatore/${dati.id}`;
+        metodo = 'PUT';
+      }
+
+      await api(endpoint, {
+        metodo: metodo,
         corpo: datiFormattati,
       });
-      setSuccesso(`Accompagnatore creato: ${creato.nome || datiFormattati.nome}`);
+
+      setSuccesso(`Accompagnatore ${isEditMode ? 'aggiornato' : 'creato'}`);
       setDati(FORM_VUOTO);
       caricaDati();
       
-      // Chiude il modale in automatico dopo 1.5 secondi
       setTimeout(() => {
         setIsModalOpen(false);
         setSuccesso('');
@@ -75,7 +100,6 @@ export default function GestioneAccompagnatori() {
     }
   }
 
-  // Logica di filtraggio
   const accompagnatoriFiltrati = accompagnatori.filter((p) => {
     const termine = ricerca.toLowerCase();
     return (
@@ -86,7 +110,19 @@ export default function GestioneAccompagnatori() {
     );
   });
 
-  // Logica di ordinamento
+  async function elimina(id, evento) {
+    evento.stopPropagation();
+    if (!window.confirm('Sei sicuro di voler eliminare questo elemento? Questa azione non può essere annullata.')) {
+      return;
+    }
+    try {
+      await api(`/profile/elimina-accompagnatore/${id}`, { metodo: 'DELETE' });
+      caricaDati();
+    } catch (err) {
+      setErrore(`Errore durante l'eliminazione: ${err.message}`);
+    }
+  }
+
   const { items: accompagnatoriOrdinati, requestSort, sortConfig } = useSortableData(accompagnatoriFiltrati);
 
   const getSortIcon = (nomeColonna) => {
@@ -111,6 +147,8 @@ export default function GestioneAccompagnatori() {
             onClick={() => {
               setErrore('');
               setSuccesso('');
+              setIsEditMode(false);
+              setDati(FORM_VUOTO);
               setIsModalOpen(true);
             }} 
             style={{ padding: '0.6rem 1rem', whiteSpace: 'nowrap' }}
@@ -120,11 +158,11 @@ export default function GestioneAccompagnatori() {
         </div>
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} titolo="Crea Nuovo Accompagnatore">
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} titolo={isEditMode ? "Modifica Accompagnatore" : "Crea Nuovo Accompagnatore"}>
         <form onSubmit={invia} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           
           <label> Associa a una persona (opzionale/richiesto)
-            <select name="id_accompagnatore" value={dati.id_accompagnatore} onChange={aggiorna} required style={{ width: '100%', marginTop: '0.5rem' }}>
+            <select name="id_persona" value={dati.id_persona} onChange={aggiorna} required style={{ width: '100%', marginTop: '0.5rem' }}>
               <option value="">Scegli persona...</option>
               {persone.map((r) => (
                 <option key={r.id} value={r.id}>
@@ -148,7 +186,7 @@ export default function GestioneAccompagnatori() {
 
           <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
             <button type="submit" disabled={inInvio}>
-              {inInvio ? 'Creazione in corso...' : 'Crea accompagnatore'}
+              {inInvio ? 'Salvataggio in corso...' : (isEditMode ? 'Salva modifiche' : 'Crea accompagnatore')}
             </button>
           </div>
         </form>
@@ -159,35 +197,25 @@ export default function GestioneAccompagnatori() {
           <table>
             <thead>
               <tr>
-                <th onClick={() => requestSort('cognome_accompagnatore')} style={{ cursor: 'pointer' }}>
-                  Cognome{getSortIcon('cognome_accompagnatore')}
-                </th>
-                <th onClick={() => requestSort('nome_accompagnatore')} style={{ cursor: 'pointer' }}>
-                  Nome{getSortIcon('nome_accompagnatore')}
-                </th>
-                <th onClick={() => requestSort('cognome_persona')} style={{ cursor: 'pointer' }}>
-                  Ospite di (Persona associata){getSortIcon('cognome_persona')}
-                </th>
+                <th onClick={() => requestSort('cognome_accompagnatore')} style={{ cursor: 'pointer' }}>Cognome{getSortIcon('cognome_accompagnatore')}</th>
+                <th onClick={() => requestSort('nome_accompagnatore')} style={{ cursor: 'pointer' }}>Nome{getSortIcon('nome_accompagnatore')}</th>
+                <th onClick={() => requestSort('cognome_persona')} style={{ cursor: 'pointer' }}>Ospite di{getSortIcon('cognome_persona')}</th>
+                <th style={{ textAlign: 'center', width: '80px' }}>Azioni</th>
               </tr>
             </thead>
             <tbody>
               {accompagnatoriOrdinati.length === 0 ? (
-                <tr>
-                  <td colSpan="3" style={{ textAlign: 'center', padding: '2rem' }}>
-                    Nessun accompagnatore trovato.
-                  </td>
-                </tr>
+                <tr><td colSpan="4" style={{ textAlign: 'center', padding: '2rem' }}>Nessun accompagnatore trovato.</td></tr>
               ) : (
                 accompagnatoriOrdinati.map((p) => (
-                  <tr 
-                    key={p.id_persona}
-                    onClick={() => navigate(`/profile/${p.id_persona}`)}
-                    style={{ cursor: 'pointer' }}
-                    title="Clicca per visualizzare il profilo"
-                  >
+                  <tr key={p.id}>
                     <td><strong>{p.cognome_accompagnatore}</strong></td>
                     <td><strong>{p.nome_accompagnatore}</strong></td>
                     <td>{p.nome_persona} {p.cognome_persona}</td>
+                    <td style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                      <button onClick={(e) => apriModalModifica(p, e)} style={{ padding: '0.3rem 0.6rem', fontSize: '0.9rem' }}>✎</button>
+                      <button onClick={(e) => elimina(p.id, e)} style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', cursor: 'pointer', padding: '0.3rem 0.6rem' }}>✕</button>
+                    </td>
                   </tr>
                 ))
               )}

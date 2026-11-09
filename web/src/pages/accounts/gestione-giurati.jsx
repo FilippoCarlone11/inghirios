@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../api.js';
-import Modal from './Modal'; // <-- Modifica il percorso se necessario
-import { useSortableData } from './useSortableData'; // <-- Modifica il percorso se necessario
+import Modal from './Modal';
+import { useSortableData } from './useSortableData';
 
 const FORM_VUOTO = {
+  id: '',
   username: '',
   nome: '',
   cognome: '',
@@ -20,16 +21,15 @@ const FORM_VUOTO = {
 export default function GestioneGiurati() {
   const navigate = useNavigate();
   
-  // Stati del form
   const [dati, setDati] = useState(FORM_VUOTO);
   const [errore, setErrore] = useState('');
   const [successo, setSuccesso] = useState('');
   const [inInvio, setInInvio] = useState(false);
   
-  // Stati dell'elenco
   const [giurati, setGiurati] = useState([]);
   const [ricerca, setRicerca] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false); // Stato per il popup
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   function caricaGiurati() {
     api('/profile/elenco-giurati')
@@ -46,22 +46,56 @@ export default function GestioneGiurati() {
     setDati((precedenti) => ({ ...precedenti, [name]: value }));
   }
 
+  function apriModalModifica(giurato, evento) {
+    evento.stopPropagation();
+    setErrore('');
+    setSuccesso('');
+    setIsEditMode(true);
+    setDati({
+      id: giurato.id,
+      username: giurato.username || '',
+      nome: giurato.nome || '',
+      cognome: giurato.cognome || '',
+      email: giurato.email || '',
+      telefono: giurato.telefono || '',
+      password: '',
+      tipo_giudice: giurato.tipo_giuria || '',
+      tipo_partecipazione: giurato.partecipazione || '',
+      emittente: giurato.emittente || '',
+      mezzo_di_informazione: giurato.mezzo_di_informazione || '',
+    });
+    setIsModalOpen(true);
+  }
+
   async function invia(evento) {
     evento.preventDefault();
     setErrore('');
     setSuccesso('');
     setInInvio(true);
+
+    const payload = { ...dati };
+    if (isEditMode && !payload.password) {
+      delete payload.password;
+    }
     
     try {
-      const creato = await api('/profile/aggiungi-giurato', {
-        metodo: 'POST',
-        corpo: dati,
+      let endpoint = '/profile/aggiungi-giurato';
+      let metodo = 'POST';
+
+      if (isEditMode) {
+        endpoint = `/profile/modifica-giurato/${dati.id}`;
+        metodo = 'PUT';
+      }
+
+      await api(endpoint, {
+        metodo: metodo,
+        corpo: payload,
       });
-      setSuccesso(`Giurato creato con successo: ${creato.persona.username}`);
+
+      setSuccesso(`Giurato ${isEditMode ? 'aggiornato' : 'creato'} con successo`);
       setDati(FORM_VUOTO);
       caricaGiurati(); 
       
-      // Chiude il popup automaticamente dopo il successo
       setTimeout(() => {
         setIsModalOpen(false);
         setSuccesso('');
@@ -74,7 +108,6 @@ export default function GestioneGiurati() {
     }
   }
 
-  // Filtro ricerca
   const giuratiFiltrati = giurati.filter((p) => {
     const termine = ricerca.toLowerCase();
     return (
@@ -84,7 +117,19 @@ export default function GestioneGiurati() {
     );
   });
 
-  // Logica ordinamento
+  async function elimina(id, evento) {
+    evento.stopPropagation();
+    if (!window.confirm('Sei sicuro di voler eliminare questo elemento? Questa azione non può essere annullata.')) {
+      return;
+    }
+    try {
+      await api(`/profile/${id}`, { metodo: 'DELETE' });
+      caricaGiurati();
+    } catch (err) {
+      setErrore(`Errore durante l'eliminazione: ${err.message}`);
+    }
+  }
+
   const { items: giuratiOrdinati, requestSort, sortConfig } = useSortableData(giuratiFiltrati);
 
   const getSortIcon = (nomeColonna) => {
@@ -94,7 +139,6 @@ export default function GestioneGiurati() {
 
   return (
     <>
-      {/* HEADER CON TITOLO E STRUMENTI (RICERCA + PULSANTE) */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
         <h1 style={{ margin: 0 }}>Gestione Giurati</h1>
         
@@ -110,6 +154,8 @@ export default function GestioneGiurati() {
             onClick={() => {
               setErrore('');
               setSuccesso('');
+              setIsEditMode(false);
+              setDati(FORM_VUOTO);
               setIsModalOpen(true);
             }} 
             style={{ padding: '0.6rem 1rem', whiteSpace: 'nowrap' }}
@@ -119,8 +165,7 @@ export default function GestioneGiurati() {
         </div>
       </div>
 
-      {/* POPUP PER LA CREAZIONE GIURATO */}
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} titolo="Aggiungi Nuovo Giurato">
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} titolo={isEditMode ? "Modifica Giurato" : "Aggiungi Nuovo Giurato"}>
         <form onSubmit={invia} style={{ display: 'flex', flexDirection: 'column' }}>
           
           <h3 style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', marginBottom: '1.5rem', color: 'var(--primary)' }}>
@@ -132,7 +177,10 @@ export default function GestioneGiurati() {
             <label> Email <input name="email" type="email" value={dati.email} onChange={aggiorna} style={{ width: '100%', marginTop: '0.5rem' }} /></label>
             <label> Telefono <input name="telefono" type="tel" value={dati.telefono} onChange={aggiorna} style={{ width: '100%', marginTop: '0.5rem' }} /></label>
             <label> Username <input name="username" value={dati.username} onChange={aggiorna} autoComplete="off" required style={{ width: '100%', marginTop: '0.5rem' }} /></label>
-            <label> Password <input name="password" type="password" value={dati.password} onChange={aggiorna} autoComplete="new-password" minLength={8} required style={{ width: '100%', marginTop: '0.5rem' }} /></label>
+            <label> Password 
+              <input name="password" type="password" value={dati.password} onChange={aggiorna} autoComplete="new-password" minLength={8} required={!isEditMode} style={{ width: '100%', marginTop: '0.5rem' }} />
+              {isEditMode && <small style={{ color: 'var(--text-muted)' }}>Lascia vuoto per non modificare</small>}
+            </label>
           </div>
 
           <h3 style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', marginBottom: '1.5rem', color: 'var(--primary)' }}>
@@ -163,13 +211,12 @@ export default function GestioneGiurati() {
 
           <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
             <button type="submit" disabled={inInvio} style={{ minWidth: '150px' }}>
-              {inInvio ? 'Creazione in corso...' : 'Crea Giurato'}
+              {inInvio ? 'Salvataggio...' : (isEditMode ? 'Salva Modifiche' : 'Crea Giurato')}
             </button>
           </div>
         </form>
       </Modal>
 
-      {/* TABELLA CON COLONNE ORDINABILI */}
       <div className="card">
         <div className="table-container">
           <table>
@@ -186,23 +233,15 @@ export default function GestioneGiurati() {
                 <th onClick={() => requestSort('mezzo_di_informazione')} style={{ cursor: 'pointer' }}>Mezzo di Info{getSortIcon('mezzo_di_informazione')}</th>
                 <th onClick={() => requestSort('liberatoria_consegnata')} style={{ cursor: 'pointer', textAlign: 'center' }}>Liberatoria{getSortIcon('liberatoria_consegnata')}</th>
                 <th onClick={() => requestSort('partecipa_in_questa_edizione')} style={{ cursor: 'pointer', textAlign: 'center' }}>In Edizione{getSortIcon('partecipa_in_questa_edizione')}</th>
+                <th style={{ width: '80px', textAlign: 'center' }}>Azioni</th>
               </tr>
             </thead>
             <tbody>
               {giuratiOrdinati.length === 0 ? (
-                <tr>
-                  <td colSpan="11" style={{ textAlign: 'center', padding: '2rem' }}>
-                    Nessun giurato trovato.
-                  </td>
-                </tr>
+                <tr><td colSpan="12" style={{ textAlign: 'center', padding: '2rem' }}>Nessun giurato trovato.</td></tr>
               ) : (
                 giuratiOrdinati.map((p) => (
-                  <tr 
-                    key={p.id} 
-                    onClick={() => navigate(`/profile/${p.id}`)}
-                    style={{ cursor: 'pointer' }}
-                    title="Clicca per visualizzare il profilo"
-                  >
+                  <tr key={p.id} onClick={() => navigate(`/profile/${p.username}`)} style={{ cursor: 'pointer' }} title="Clicca per visualizzare il profilo">
                     <td><strong>{p.cognome}</strong></td>
                     <td><strong>{p.nome}</strong></td>
                     <td>{p.username}</td>
@@ -214,6 +253,10 @@ export default function GestioneGiurati() {
                     <td>{p.mezzo_di_informazione || '-'}</td>
                     <td style={{ textAlign: 'center' }}>{p.liberatoria_consegnata ? '✅' : '❌'}</td>
                     <td style={{ textAlign: 'center' }}>{p.partecipa_in_questa_edizione ? '✅' : '❌'}</td>
+                    <td style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }} onClick={(e) => e.stopPropagation()}>
+                      <button onClick={(e) => apriModalModifica(p, e)} style={{ padding: '0.2rem 0.5rem', fontSize: '0.9rem' }}>✎</button>
+                      <button onClick={(e) => elimina(p.id, e)} style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', padding: '0.2rem 0.5rem' }}>✕</button>
+                    </td>
                   </tr>
                 ))
               )}

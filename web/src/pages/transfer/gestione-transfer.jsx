@@ -103,7 +103,7 @@ export default function GestioneTransfer() {
   return (
     <>
       <div className="card">
-        <h1>Tabellone Arrivi/Partenze e Transfer (Cagliari)</h1>
+        <h1>Piano transfer</h1>
         
         {caricamento ? (
           <p>Caricamento dati in corso...</p>
