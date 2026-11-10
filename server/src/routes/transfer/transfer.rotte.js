@@ -3,129 +3,178 @@ import { Router } from 'express';
 import { richiediAuth } from '../../middleware/authentication.js';
 import { richiediRuolo } from '../../middleware/authorization.js';
 import { ErroreHttp } from '../../middleware/errors.js';
-import { elencoTransferRegistrati, modificaTransfer, aggiungiTransfer, elencoTrasfersUtente } from './transfer.query.js';
+import {
+  elencoTransferRegistrati,
+  salvaGruppoTransfer,
+  impostaVisibilita,
+  eliminaTransfer,
+  eliminaTransferMultipli,
+  elencoAccompagnatoriPersona,
+  elencoPasseggeri,
+  elencoLuoghi,
+  aggiungiLuogo,
+  elencoTrasfersUtente,
+  elencoColoriRunner,
+  impostaColoreRunner
+} from './transfer.query.js';
 import { RUOLI } from '../../ruoli.js';
 
 const router = Router();
 
+const soloAdmin = [richiediAuth, richiediRuolo(RUOLI.ADMIN)];
+const listaIdValida = (v) => Array.isArray(v) ? v.map(Number).filter((n) => Number.isInteger(n) && n > 0) : [];
 
-
-router.get('/elenco-transfer', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res) => {
-  res.json(await elencoTransferRegistrati());
+router.get('/elenco-transfer', ...soloAdmin, async (req, res, next) => {
+  try { res.json(await elencoTransferRegistrati()); } catch (err) { next(err); }
 });
 
-router.post('/aggiungi-transfer', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res, next) => {
+// Crea o modifica un transfer di gruppo (un runner, un orario, più passeggeri)
+router.post('/salva-gruppo', ...soloAdmin, async (req, res, next) => {
   try {
     const {
-      id_biglietto,
-      id_runner,
-      id_persona_da_trasferire,
-      orario_pickup,
-      luogo_pickup,
-      luogo_destinazione,
-      visibile_al_runner,
+      ids_esistenti, id_runner, orario_pickup, luogo_pickup,
+      luogo_destinazione, visibile_al_runner, passeggeri
     } = req.body;
 
-    // Controllo obbligatori (in base alla struttura del DB per la tabella transfer)
-    if (!id_biglietto || !luogo_destinazione) {
-      throw new ErroreHttp(400, 'Compila tutti i campi obbligatori (Biglietto di riferimento e Destinazione)');
+    if (!Array.isArray(passeggeri) || passeggeri.length === 0) {
+      throw new ErroreHttp(400, 'Aggiungi almeno un passeggero');
+    }
+    if (passeggeri.some((p) => !/^[pam]_\d+$/.test(p?.chiave || ''))) {
+      throw new ErroreHttp(400, 'Passeggero non valido');
     }
 
-    // Assicurati di aver importato aggiungiTransfer all'inizio del file!
-    const transfer = await aggiungiTransfer({
-      id_biglietto: Number(id_biglietto),
+    const transfer = await salvaGruppoTransfer({
+      ids_esistenti: listaIdValida(ids_esistenti),
       id_runner: id_runner ? Number(id_runner) : null,
-      id_persona_da_trasferire: id_persona_da_trasferire ? Number(id_persona_da_trasferire) : null,
       orario_pickup: orario_pickup || null,
-      luogo_pickup: luogo_pickup ? luogo_pickup.trim() : null,
-      luogo_destinazione: luogo_destinazione.trim(),
-      visibile_al_runner: Boolean(visibile_al_runner)
+      luogo_pickup: luogo_pickup ? String(luogo_pickup).trim() : null,
+      luogo_destinazione: luogo_destinazione ? String(luogo_destinazione).trim() : null,
+      visibile_al_runner: Boolean(visibile_al_runner),
+      passeggeri: passeggeri.map((p) => ({
+        chiave: p.chiave,
+        id_biglietto: p.id_biglietto ? Number(p.id_biglietto) : null
+      }))
     });
 
-    res.status(201).json(transfer);
-
+    res.status(200).json(transfer);
   } catch (err) {
-    console.error("ERRORE CREAZIONE TRANSFER:", err); 
-    next(err); 
-  }
-});
-
-
-router.put('/modifica-transfer/:id', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res, next) => {
-  try {
-    const id_transfer = Number(req.params.id);
-    
-    const {
-      id_runner,
-      id_persona_da_trasferire,
-      orario_pickup,
-      luogo_pickup,
-      luogo_destinazione,
-      visibile_al_runner,
-    } = req.body;
-
-    // Controllo obbligatori base
-    if (!id_transfer) {
-      throw new ErroreHttp(400, 'ID Transfer mancante o non valido');
-    }
-    if (!luogo_destinazione) {
-      throw new ErroreHttp(400, 'La destinazione è obbligatoria');
-    }
-
-    const transferAggiornato = await modificaTransfer(id_transfer, {
-      id_runner: id_runner ? Number(id_runner) : null,
-      id_persona_da_trasferire: id_persona_da_trasferire ? Number(id_persona_da_trasferire) : null,
-      orario_pickup: orario_pickup || null,
-      luogo_pickup: luogo_pickup ? luogo_pickup.trim() : null,
-      luogo_destinazione: luogo_destinazione.trim(),
-      visibile_al_runner: Boolean(visibile_al_runner)
-    });
-
-    if (!transferAggiornato) {
-      throw new ErroreHttp(404, 'Transfer non trovato');
-    }
-
-    res.status(200).json(transferAggiornato);
-
-  } catch (err) {
-    console.error("ERRORE MODIFICA TRANSFER:", err); 
-    next(err); 
-  }
-});
-
-router.delete('/elimina-transfer/:id', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res, next) => {
-  try {
-    const id_transfer = Number(req.params.id);
-    if (!id_transfer) {
-      throw new ErroreHttp(400, 'ID Transfer mancante o non valido');
-    }
-
-    const transferEliminato = await eliminaTransfer(id_transfer); // Richiede l'aggiunta in transfer.query.js
-
-    if (!transferEliminato) {
-      throw new ErroreHttp(404, 'Transfer non trovato');
-    }
-
-    res.status(200).json({ success: true, message: 'Transfer eliminato con successo' });
-  } catch (err) {
-    console.error("ERRORE ELIMINAZIONE TRANSFER:", err);
+    console.error('ERRORE SALVATAGGIO TRANSFER:', err);
     next(err);
   }
 });
 
-router.get('elenco-transfer-utente/:id', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res, next) => {
+// Toggle "visibile al runner" su una o più righe (un gruppo, o tutti i gruppi di un runner)
+router.patch('/visibilita', ...soloAdmin, async (req, res, next) => {
   try {
-    const { id_utente } = req.params;
-    const transfers = await elencoTrasfersUtente(id_utente);
+    const ids = listaIdValida(req.body.ids);
+    if (ids.length === 0) throw new ErroreHttp(400, 'Nessun transfer selezionato');
 
-    res.status(200).json({ 
-      id_utente,
-      transfers
-    });
+    await impostaVisibilita(ids, Boolean(req.body.visibile));
+    res.json({ success: true });
   } catch (err) {
-    console.error("ERRORE RECUPERO TRANSFER:", err); 
-    next(err); 
+    console.error('ERRORE VISIBILITA TRANSFER:', err);
+    next(err);
   }
-
 });
+
+router.delete('/elimina-gruppo', ...soloAdmin, async (req, res, next) => {
+  try {
+    const ids = listaIdValida(String(req.query.ids || '').split(','));
+    if (ids.length === 0) throw new ErroreHttp(400, 'Nessun transfer selezionato');
+
+    const eliminati = await eliminaTransferMultipli(ids);
+    if (!eliminati) throw new ErroreHttp(404, 'Transfer non trovato');
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('ERRORE ELIMINAZIONE GRUPPO TRANSFER:', err);
+    next(err);
+  }
+});
+
+router.delete('/elimina-transfer/:id', ...soloAdmin, async (req, res, next) => {
+  try {
+    const id_transfer = Number(req.params.id);
+    if (!id_transfer) throw new ErroreHttp(400, 'ID Transfer mancante o non valido');
+
+    const eliminato = await eliminaTransfer(id_transfer);
+    if (!eliminato) throw new ErroreHttp(404, 'Transfer non trovato');
+
+    res.status(200).json({ success: true, message: 'Transfer eliminato con successo' });
+  } catch (err) {
+    console.error('ERRORE ELIMINAZIONE TRANSFER:', err);
+    next(err);
+  }
+});
+
+router.get('/accompagnatori/:id_persona', ...soloAdmin, async (req, res, next) => {
+  try {
+    const id_persona = Number(req.params.id_persona);
+    if (!id_persona) throw new ErroreHttp(400, 'ID persona non valido');
+    res.json(await elencoAccompagnatoriPersona(id_persona));
+  } catch (err) { next(err); }
+});
+
+router.get('/elenco-passeggeri', ...soloAdmin, async (req, res, next) => {
+  try { res.json(await elencoPasseggeri()); } catch (err) { next(err); }
+});
+
+router.get('/elenco-luoghi', ...soloAdmin, async (req, res, next) => {
+  try { res.json(await elencoLuoghi()); } catch (err) { next(err); }
+});
+
+router.post('/aggiungi-luogo', ...soloAdmin, async (req, res, next) => {
+  try {
+    const nome = String(req.body.nome || '').trim();
+    const indirizzo = String(req.body.indirizzo || '').trim();
+    if (!nome) throw new ErroreHttp(400, 'Il nome del luogo è obbligatorio');
+
+    const luogo = await aggiungiLuogo({
+      nome,
+      indirizzo,
+      latitudine: req.body.latitudine ?? null,
+      longitudine: req.body.longitudine ?? null
+    });
+    res.status(201).json(luogo);
+  } catch (err) {
+    if (err.code === '23505') return next(new ErroreHttp(409, 'Esiste già un luogo con questo nome'));
+    console.error('ERRORE CREAZIONE LUOGO:', err);
+    next(err);
+  }
+});
+
+router.get('/elenco-transfer-utente/:id', ...soloAdmin, async (req, res, next) => {
+  try {
+    const id_utente = Number(req.params.id);
+    if (!id_utente) throw new ErroreHttp(400, 'ID utente non valido');
+
+    const transfers = await elencoTrasfersUtente(id_utente);
+    res.status(200).json({ id_utente, transfers });
+  } catch (err) {
+    console.error('ERRORE RECUPERO TRANSFER:', err);
+    next(err);
+  }
+});
+
+router.get('/colori-runner', ...soloAdmin, async (req, res, next) => {
+  try { res.json(await elencoColoriRunner()); } catch (err) { next(err); }
+});
+
+router.put('/colore-runner/:id_runner', ...soloAdmin, async (req, res, next) => {
+  try {
+    const id_runner = Number(req.params.id_runner);
+    if (!id_runner) throw new ErroreHttp(400, 'ID runner non valido');
+
+    const grezzo = String(req.body.colore || '').trim();
+    const colore = (grezzo.startsWith('#') ? grezzo : `#${grezzo}`).toLowerCase();
+    if (!/^#[0-9a-f]{6}$/.test(colore)) throw new ErroreHttp(400, 'Colore non valido: usa il formato esadecimale, es. #3b82f6');
+
+    res.json(await impostaColoreRunner(id_runner, colore));
+  } catch (err) {
+    if (err.code === '23503') return next(new ErroreHttp(404, 'Runner non trovato'));
+    console.error('ERRORE COLORE RUNNER:', err);
+    next(err);
+  }
+});
+
 export default router;

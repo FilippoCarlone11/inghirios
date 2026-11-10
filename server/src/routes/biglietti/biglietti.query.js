@@ -2,12 +2,15 @@ import { pool } from '../../db.js';
 
 export async function elencoBiglietti() {
   const { rows } = await pool.query(
-    `SELECT b.*, 
+    `SELECT b.*,
             COALESCE(p.nome, a.nome, m.nome) AS nome,
-            COALESCE(p.cognome, a.cognome, m.cognome) AS cognome
+            COALESCE(p.cognome, a.cognome, m.cognome) AS cognome,
+            p.ruolo AS ruolo,
+            COALESCE(p.username, tp.username) AS username
      FROM biglietti b
      LEFT JOIN persone p ON b.id_utente = p.id
      LEFT JOIN accompagnatori a ON b.id_accompagnatore = a.id
+     LEFT JOIN persone tp ON a.id_persona = tp.id
      LEFT JOIN membri_ospiti m ON b.id_membro_ospite = m.id
      ORDER BY cognome, nome`
   );
@@ -36,27 +39,41 @@ export async function aggiungiBiglietto(dati) {
 }
 
 export async function elencoBigliettiDaPerCagliari() {
+  // LEFT JOIN: include anche i biglietti di accompagnatori e membri ospiti (prima il JOIN su persone li escludeva).
+  // partenza/arrivo normalizzati per non perdere tratte scritte 'cag' o con spazi.
   const query = `
-    SELECT 
+    SELECT
       b.id,
-      p.id AS id_persona,
-      p.nome, 
-      p.cognome, 
-      b.codice_prenotazione, 
-      b.codice_volo, 
-      b.codice_treno, 
-      b.compagnia, 
-      b.stato, 
-      b.partenza, 
-      b.arrivo,
-      b.orario_partenza_previsto, 
+      b.id_utente AS id_persona,
+      b.id_accompagnatore,
+      b.id_membro_ospite,
+      CASE
+        WHEN b.id_utente IS NOT NULL THEN 'p_' || b.id_utente
+        WHEN b.id_accompagnatore IS NOT NULL THEN 'a_' || b.id_accompagnatore
+        WHEN b.id_membro_ospite IS NOT NULL THEN 'm_' || b.id_membro_ospite
+      END AS chiave_passeggero,
+      COALESCE(p.nome, a.nome, m.nome) AS nome,
+      COALESCE(p.cognome, a.cognome, m.cognome) AS cognome,
+      a.id_persona AS id_titolare,
+      COALESCE(p.username, tp.username) AS username_persona,
+      b.codice_prenotazione,
+      b.codice_volo,
+      b.codice_treno,
+      b.compagnia,
+      b.stato,
+      UPPER(TRIM(b.partenza)) AS partenza,
+      UPPER(TRIM(b.arrivo)) AS arrivo,
+      b.orario_partenza_previsto,
       b.orario_arrivo_previsto
     FROM biglietti b
-    JOIN persone p ON b.id_utente = p.id 
-    WHERE b.partenza = 'CAG' OR b.arrivo = 'CAG'
-    ORDER BY b.orario_partenza_previsto ASC NULLS LAST
+    LEFT JOIN persone p ON b.id_utente = p.id
+    LEFT JOIN accompagnatori a ON b.id_accompagnatore = a.id
+    LEFT JOIN persone tp ON a.id_persona = tp.id
+    LEFT JOIN membri_ospiti m ON b.id_membro_ospite = m.id
+    WHERE UPPER(TRIM(b.partenza)) = 'CAG' OR UPPER(TRIM(b.arrivo)) = 'CAG'
+    ORDER BY COALESCE(b.orario_partenza_previsto, b.orario_arrivo_previsto) ASC NULLS LAST
   `;
-  
+
   const { rows } = await pool.query(query);
   return rows;
 }
@@ -99,4 +116,3 @@ export async function trovaBigliettiPerUtenteID(id_utente) {
     const { rows } = await pool.query(`SELECT * FROM biglietti WHERE id_utente = $1;`, [id_utente]);
     return rows;
 }
-

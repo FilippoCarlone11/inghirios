@@ -1,26 +1,9 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../api.js';
+import { Link } from 'react-router-dom';
+import {CODICI_LUOGHI, COMPAGNIE, ETICHETTE_RUOLO, STATI_BIGLIETTO, STATO_ICONA, norm, fmtData, fmtOra, fmtEuro, nomeLuogo} from '../utils.js'
 
-// ... (Lascia intatti gli array COMPAGNIE e CODICI_LUOGHI come li hai tu, aggiungendo BGY e ARN)
-const COMPAGNIE = ['trenitalia', 'ita_airways', 'ryanair', 'easyjet', 'wizz_air', 'volotea', 'lufthansa', 'grimaldi_lines', 'altra_compagnia', 'nessuna'];
-const CODICI_LUOGHI = [
-  { codice: 'FCO', nome: 'Roma Fiumicino' },
-  { codice: 'CAG', nome: 'Cagliari Elmas' },
-  { codice: 'MXP', nome: 'Milano Malpensa' },
-  { codice: 'BGY', nome: 'Milano Bergamo' },
-  { codice: 'ARN', nome: 'Stoccolma Arlanda' }
-];
-const STATI_BIGLIETTO = ['comprato', 'in_ritardo', 'arrivato', 'cancellato', 'rimborso_richiesto', 'rimborso_ottenuto'];
 
-// Icona per stato (i colori sono in App.css: .stato-comprato, .stato-in_ritardo, ...)
-const STATO_ICONA = {
-  comprato: '🎟️',
-  in_ritardo: '⏱️',
-  arrivato: '✅',
-  cancellato: '🚫',
-  rimborso_richiesto: '📨',
-  rimborso_ottenuto: '💶',
-};
 
 const FORM_VUOTO = {
   id: '', id_utente: '', codice_prenotazione: '', codice_volo: '', codice_treno: '',
@@ -28,21 +11,6 @@ const FORM_VUOTO = {
   partenza: '', arrivo: '', orario_partenza_previsto: '', orario_arrivo_previsto: ''
 };
 
-// Normalizza un nome: minuscolo, senza accenti, parole ordinate (funziona anche con nome/cognome invertiti)
-const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-  .split(/\s+/).filter(Boolean).sort().join(' ');
-
-const nomeLuogo = (codice) => CODICI_LUOGHI.find((l) => l.codice === codice)?.nome || '';
-
-const fmtData = (iso) => iso
-  ? new Date(iso).toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })
-  : '';
-const fmtOra = (iso) => iso
-  ? new Date(iso).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
-  : '';
-const fmtEuro = (n) => (n === null || n === undefined || n === '')
-  ? '-'
-  : Number(n).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
 
 export default function GestioneBiglietti() {
   const [persone, setPersone] = useState([]);
@@ -320,9 +288,16 @@ export default function GestioneBiglietti() {
                     <tr key={b.id}>
                       {/* OSPITE */}
                       <td>
-                        <div className="bg-ospite">{b.nome} {b.cognome}</div>
+                        <div className="bg-ospite">
+                          {b.username
+                            ? <Link to={`/profile/${b.username}`} style={{ color: 'inherit' }}>{b.nome} {b.cognome}</Link>
+                            : <>{b.nome} {b.cognome}</>}
+                        </div>
                         <div className="bg-sub">
-                          {b.id_utente ? 'Utente principale' : b.id_accompagnatore ? 'Accompagnatore' : b.id_membro_ospite ? 'Elenco ospiti' : ''}
+                          {b.id_utente
+                            ? (ETICHETTE_RUOLO[b.ruolo] || b.ruolo || '')
+                            : b.id_accompagnatore ? 'Accompagnatore'
+                            : b.id_membro_ospite ? 'Elenco ospiti' : ''}
                         </div>
                       </td>
 

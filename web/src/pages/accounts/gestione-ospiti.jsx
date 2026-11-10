@@ -310,7 +310,7 @@ export default function GestioneOspiti() {
                           <td style={{ textAlign: 'center' }}>↳</td>
                           <td style={{ paddingLeft: '2rem' }}>{membro.cognome}</td>
                           <td>{membro.nome}</td>
-                          <td colSpan="3" style={{ color: '#94a3b8', fontStyle: 'italic' }}>-</td>
+                          <td colSpan="3" style={{ color: '#94a3b8', fontStyle: 'italic' }}></td>
                           <td style={{ textAlign: 'center' }}>
                             <button onClick={(e) => eliminaMembroOspite(membro.id, e)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.2rem' }}>✕</button>
                           </td>

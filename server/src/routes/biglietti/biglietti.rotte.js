@@ -5,7 +5,7 @@ import fs from 'fs';
 import { richiediAuth } from '../../middleware/authentication.js';
 import { richiediRuolo } from '../../middleware/authorization.js';
 import { ErroreHttp } from '../../middleware/errors.js';
-import { elencoBiglietti, aggiungiBiglietto, eliminaBiglietto, trovaBigliettiPerUtenteID, modificaBiglietto, cambiaStatoBiglietto } from './biglietti.query.js';
+import { elencoBiglietti, aggiungiBiglietto, eliminaBiglietto, trovaBigliettiPerUtenteID, modificaBiglietto, cambiaStatoBiglietto, elencoBigliettiDaPerCagliari } from './biglietti.query.js';
 import { RUOLI } from '../../ruoli.js';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
@@ -178,6 +178,10 @@ router.delete('/elimina-biglietto/:id', richiediAuth, richiediRuolo(RUOLI.ADMIN)
     await eliminaBiglietto(Number(req.params.id));
     res.status(200).json({ success: true });
   } catch (err) { next(err); }
+});
+
+router.get('/elenco-biglietti-da-per-cagliari', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res) => {
+  res.json(await elencoBigliettiDaPerCagliari());
 });
 
 export default router;

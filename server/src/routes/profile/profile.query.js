@@ -185,12 +185,12 @@ export async function elencoAccompagnatoriPerIDPersona(id_persona) {
   return rows;
 }
 
-export async function creaMembroOspite({ id_capo_gruppo, nome, cognome }) {
+export async function creaMembroOspite({ id_gruppo, nome, cognome }) {
   const { rows } = await pool.query(
-    `INSERT INTO membri_ospiti (id_capo_gruppo, nome, cognome)
+    `INSERT INTO membri_ospiti (id_gruppo, nome, cognome)
      VALUES ($1, $2, $3)
-     RETURNING id, id_capo_gruppo, nome, cognome`,
-    [id_capo_gruppo, nome, cognome]
+     RETURNING id, id_gruppo, nome, cognome`,
+    [id_gruppo, nome, cognome]
   );
   return rows[0];
 }

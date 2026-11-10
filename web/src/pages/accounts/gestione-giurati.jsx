@@ -227,12 +227,12 @@ export default function GestioneGiurati() {
                 <th onClick={() => requestSort('username')} style={{ cursor: 'pointer' }}>Username{getSortIcon('username')}</th>
                 <th onClick={() => requestSort('email')} style={{ cursor: 'pointer' }}>Email{getSortIcon('email')}</th>
                 <th onClick={() => requestSort('telefono')} style={{ cursor: 'pointer' }}>Telefono{getSortIcon('telefono')}</th>
-                <th onClick={() => requestSort('tipo_giuria')} style={{ cursor: 'pointer' }}>Tipo Giuria{getSortIcon('tipo_giuria')}</th>
-                <th onClick={() => requestSort('partecipazione')} style={{ cursor: 'pointer' }}>Partecipazione{getSortIcon('partecipazione')}</th>
+                <th onClick={() => requestSort('tipo_giuria')} style={{ cursor: 'pointer' }}>Giuria{getSortIcon('tipo_giuria')}</th>
+                <th onClick={() => requestSort('partecipazione')} style={{ cursor: 'pointer' }}>Partecipaz.{getSortIcon('partecipazione')}</th>
                 <th onClick={() => requestSort('emittente')} style={{ cursor: 'pointer' }}>Emittente{getSortIcon('emittente')}</th>
-                <th onClick={() => requestSort('mezzo_di_informazione')} style={{ cursor: 'pointer' }}>Mezzo di Info{getSortIcon('mezzo_di_informazione')}</th>
+                <th onClick={() => requestSort('mezzo_di_informazione')} style={{ cursor: 'pointer' }}>Trasmissione{getSortIcon('mezzo_di_informazione')}</th>
                 <th onClick={() => requestSort('liberatoria_consegnata')} style={{ cursor: 'pointer', textAlign: 'center' }}>Liberatoria{getSortIcon('liberatoria_consegnata')}</th>
-                <th onClick={() => requestSort('partecipa_in_questa_edizione')} style={{ cursor: 'pointer', textAlign: 'center' }}>In Edizione{getSortIcon('partecipa_in_questa_edizione')}</th>
+                <th onClick={() => requestSort('partecipa_in_questa_edizione')} style={{ cursor: 'pointer', textAlign: 'center' }}>Presenza{getSortIcon('partecipa_in_questa_edizione')}</th>
                 <th style={{ width: '80px', textAlign: 'center' }}>Azioni</th>
               </tr>
             </thead>

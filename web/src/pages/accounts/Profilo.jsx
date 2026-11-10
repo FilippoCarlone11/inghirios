@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../api.js';
 
+// IMPORTIAMO LE FUNZIONI DAL TUO NUOVO FILE UTILS
+import { formattaEnum, fmtData, fmtOra, nomeLuogo } from '../utils.js';
+
 export default function Profilo() {
   const { username } = useParams();
   const navigate = useNavigate();
@@ -118,7 +121,6 @@ export default function Profilo() {
             Dettagli Giuria
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginTop: '1rem' }}>
-            {/* Doppio controllo (tipo_giuria o tipo_giudice) per prendere il campo corretto dal DB */}
             <div><strong>Tipo Giuria:</strong> <br/>{datiGiurato.tipo_giuria || '-'}</div>
             <div><strong>Partecipazione:</strong> <br/>{datiGiurato.partecipazione || '-'}</div>
             <div><strong>Emittente:</strong> <br/>{datiGiurato.emittente || '-'}</div>
@@ -146,22 +148,18 @@ export default function Profilo() {
       )}
 
       {/* SEZIONE ACCOMPAGNATORI */}
-      {accompagnatori.lenght > 0 && (
+      {accompagnatori && accompagnatori.length > 0 && (
       <div className="card" style={{ marginBottom: '2rem' }}>
         <h3 style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', marginTop: 0, color: 'var(--primary)' }}>
           Accompagnatori
         </h3>
-        {!accompagnatori || accompagnatori.length === 0 ? (
-          <p style={{ marginTop: '1rem', fontStyle: 'italic', color: '#64748b' }}>Nessun accompagnatore associato.</p>
-        ) : (
-          <ul style={{ listStyleType: 'none', padding: 0, margin: '1rem 0 0 0' }}>
-            {accompagnatori.map((acc, index) => (
-              <li key={index} style={{ padding: '0.5rem 0', borderBottom: '1px dashed var(--border)' }}>
-                👥 {acc.nome_accompagnatore || acc.nome} {acc.cognome_accompagnatore || acc.cognome}
-              </li>
-            ))}
-          </ul>
-        )}
+        <ul style={{ listStyleType: 'none', padding: 0, margin: '1rem 0 0 0' }}>
+          {accompagnatori.map((acc, index) => (
+            <li key={index} style={{ padding: '0.5rem 0', borderBottom: '1px dashed var(--border)' }}>
+              👥 {acc.nome_accompagnatore || acc.nome} {acc.cognome_accompagnatore || acc.cognome}
+            </li>
+          ))}
+        </ul>
       </div>
       )}
 
@@ -249,12 +247,51 @@ export default function Profilo() {
       {biglietti && biglietti.length > 0 && (
         <div className="card" style={{ marginBottom: '2rem', borderLeft: '4px solid #f59e0b' }}>
           <h3 style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', marginTop: 0, color: '#f59e0b' }}>
-            Biglietti ed Eventi
+            Biglietti
           </h3>
           <ul style={{ listStyleType: 'none', padding: 0, margin: '1rem 0 0 0' }}>
-            {biglietti.map((biglietto, index) => (
-              <li key={index} style={{ padding: '0.75rem 0', borderBottom: '1px dashed var(--border)' }}>
-                🎟️ <strong>{biglietto.nome_evento || 'Evento'}</strong> — {biglietto.data_evento ? new Date(biglietto.data_evento).toLocaleDateString('it-IT') : ''} ({biglietto.quantita || 1}x)
+            {biglietti.map((b) => (
+              <li 
+                key={b.id} 
+                style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  gap: '1rem', 
+                  marginBottom: '1rem',
+                  paddingBottom: '1rem',
+                  borderBottom: '1px solid #eee'
+                }}
+              >
+                {/* TRATTA: aeroporti, orari di partenza e arrivo, data */}
+                <div style={{ flex: 1 }}>
+                  <div className="bg-tratta">
+                    <div>
+                      <div className="bg-iata">{b.partenza}</div>
+                      <div className="bg-sub">{nomeLuogo(b.partenza)}</div>
+                      <div className="bg-sub"><strong>{fmtOra(b.orario_partenza_previsto) || '--:--'}</strong></div>
+                    </div>
+                    <span className="bg-freccia">→</span>
+                    <div>
+                      <div className="bg-iata">{b.arrivo}</div>
+                      <div className="bg-sub">{nomeLuogo(b.arrivo)}</div>
+                      <div className="bg-sub"><strong>{fmtOra(b.orario_arrivo_previsto) || '--:--'}</strong></div>
+                    </div>
+                  </div>
+                  {b.orario_partenza_previsto && (
+                    <div className="bg-sub" style={{ marginTop: 6 }}>📅 {fmtData(b.orario_partenza_previsto)}</div>
+                  )}
+                </div>
+
+                {/* COMPAGNIA + CODICI */}
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600 }}>{formattaEnum(b.compagnia)}</div>
+                  <div>
+                    {b.codice_prenotazione && <span className="bg-chip" title="Codice prenotazione">PNR {b.codice_prenotazione}</span>}
+                    {b.codice_volo && <span className="bg-chip" title="Codice volo">✈ {b.codice_volo}</span>}
+                    {b.codice_treno && <span className="bg-chip" title="Codice treno">🚆 {b.codice_treno}</span>}
+                    {!b.codice_prenotazione && !b.codice_volo && !b.codice_treno && <span className="bg-sub">-</span>}
+                  </div>
+                </div>              
               </li>
             ))}
           </ul>
