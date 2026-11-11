@@ -231,8 +231,7 @@ export default function GestioneGiurati() {
                 <th onClick={() => requestSort('partecipazione')} style={{ cursor: 'pointer' }}>Partecipaz.{getSortIcon('partecipazione')}</th>
                 <th onClick={() => requestSort('emittente')} style={{ cursor: 'pointer' }}>Emittente{getSortIcon('emittente')}</th>
                 <th onClick={() => requestSort('mezzo_di_informazione')} style={{ cursor: 'pointer' }}>Trasmissione{getSortIcon('mezzo_di_informazione')}</th>
-                <th onClick={() => requestSort('liberatoria_consegnata')} style={{ cursor: 'pointer', textAlign: 'center' }}>Liberatoria{getSortIcon('liberatoria_consegnata')}</th>
-                <th onClick={() => requestSort('partecipa_in_questa_edizione')} style={{ cursor: 'pointer', textAlign: 'center' }}>Presenza{getSortIcon('partecipa_in_questa_edizione')}</th>
+                <th onClick={() => requestSort('partecipa_in_questa_edizione')} style={{ cursor: 'pointer', textAlign: 'center' }}>Presente{getSortIcon('partecipa_in_questa_edizione')}</th>
                 <th style={{ width: '80px', textAlign: 'center' }}>Azioni</th>
               </tr>
             </thead>
@@ -251,7 +250,6 @@ export default function GestioneGiurati() {
                     <td>{p.partecipazione || '-'}</td>
                     <td>{p.emittente || '-'}</td>
                     <td>{p.mezzo_di_informazione || '-'}</td>
-                    <td style={{ textAlign: 'center' }}>{p.liberatoria_consegnata ? '✅' : '❌'}</td>
                     <td style={{ textAlign: 'center' }}>{p.partecipa_in_questa_edizione ? '✅' : '❌'}</td>
                     <td style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }} onClick={(e) => e.stopPropagation()}>
                       <button onClick={(e) => apriModalModifica(p, e)} style={{ padding: '0.2rem 0.5rem', fontSize: '0.9rem' }}>✎</button>

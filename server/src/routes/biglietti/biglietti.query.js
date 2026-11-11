@@ -107,12 +107,31 @@ export async function cambiaStatoBiglietto(id, stato) {
   return rows[0];
 }
 
+export async function cambiaStatoRimborsoBiglietto(id, stato) {
+  const { rows } = await pool.query(`UPDATE biglietti SET rimborsato = $1 WHERE id = $2 RETURNING *`, [stato, id]);
+  return rows[0];
+}
+
+
 export async function eliminaBiglietto(id) {
   const { rowCount } = await pool.query(`DELETE FROM biglietti WHERE id = $1`, [id]);
   return rowCount > 0;
 }
 
 export async function trovaBigliettiPerUtenteID(id_utente) {
-    const { rows } = await pool.query(`SELECT * FROM biglietti WHERE id_utente = $1;`, [id_utente]);
+    const query = `
+      SELECT b.*,
+             COALESCE(p.nome, a.nome, m.nome) AS nome_passeggero,
+             COALESCE(p.cognome, a.cognome, m.cognome) AS cognome_passeggero
+      FROM biglietti b
+      LEFT JOIN persone p ON b.id_utente = p.id
+      LEFT JOIN accompagnatori a ON b.id_accompagnatore = a.id
+      LEFT JOIN membri_ospiti m ON b.id_membro_ospite = m.id
+      WHERE b.id_utente = $1
+         OR b.id_accompagnatore IN (SELECT id FROM accompagnatori WHERE id_persona = $1)
+         OR b.id_membro_ospite IN (SELECT id FROM membri_ospiti WHERE id_gruppo = $1)
+      ORDER BY b.orario_partenza_previsto ASC NULLS LAST;
+    `;
+    const { rows } = await pool.query(query, [id_utente]);
     return rows;
 }

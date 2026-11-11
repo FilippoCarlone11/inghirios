@@ -5,7 +5,7 @@ import fs from 'fs';
 import { richiediAuth } from '../../middleware/authentication.js';
 import { richiediRuolo } from '../../middleware/authorization.js';
 import { ErroreHttp } from '../../middleware/errors.js';
-import { elencoBiglietti, aggiungiBiglietto, eliminaBiglietto, trovaBigliettiPerUtenteID, modificaBiglietto, cambiaStatoBiglietto, elencoBigliettiDaPerCagliari } from './biglietti.query.js';
+import { elencoBiglietti, aggiungiBiglietto, eliminaBiglietto, trovaBigliettiPerUtenteID, modificaBiglietto, cambiaStatoBiglietto, elencoBigliettiDaPerCagliari, cambiaStatoRimborsoBiglietto } from './biglietti.query.js';
 import { RUOLI } from '../../ruoli.js';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
@@ -169,6 +169,13 @@ router.put('/modifica-biglietto/:id', richiediAuth, richiediRuolo(RUOLI.ADMIN), 
 router.patch('/cambia-stato/:id', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res, next) => {
   try {
     const biglietto = await cambiaStatoBiglietto(Number(req.params.id), req.body.stato);
+    res.status(200).json(biglietto);
+  } catch (err) { next(err); }
+});
+
+router.patch('/cambia-stato-rimborso/:id', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res, next) => {
+  try {
+    const biglietto = await cambiaStatoRimborsoBiglietto(Number(req.params.id), req.body.stato);
     res.status(200).json(biglietto);
   } catch (err) { next(err); }
 });

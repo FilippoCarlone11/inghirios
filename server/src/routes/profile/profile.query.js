@@ -1,5 +1,9 @@
 import { pool } from '../../db.js';
 
+// ==========================================
+// SEZIONE 1: ELENCHI GENERALI E RICERCHE PERSONE
+// ==========================================
+
 export async function elenco() {
   const { rows } = await pool.query(
     `SELECT id, username, nome, cognome, email, telefono, ruolo, attivo
@@ -51,6 +55,10 @@ export async function trovaPerID(id) {
   return rows[0];
 }
 
+// ==========================================
+// SEZIONE 2: CREAZIONE E GESTIONE PASSWORD
+// ==========================================
+
 export async function hashPasswordDi(id) {
   const { rows } = await pool.query('SELECT password_hash FROM persone WHERE id = $1', [id]);
   return rows[0]?.password_hash;
@@ -70,6 +78,10 @@ export async function crea({ username, passwordHash, nome, cognome, email, telef
   return rows[0];
 }
 
+// ==========================================
+// SEZIONE 3: GIURATI
+// ==========================================
+
 export async function aggiungiAGiurato({ id_utente, tipo_giuria, liberatoria_consegnata, partecipazione, emittente, mezzo_di_informazione, partecipa_in_questa_edizione }){
   const {rows} = await pool.query(
     'INSERT INTO giurati (id_utente, tipo_giuria, liberatoria_consegnata, partecipazione, emittente, mezzo_di_informazione, partecipa_in_questa_edizione) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, id_utente, tipo_giuria, liberatoria_consegnata, partecipazione, emittente, mezzo_di_informazione, partecipa_in_questa_edizione',
@@ -80,39 +92,23 @@ export async function aggiungiAGiurato({ id_utente, tipo_giuria, liberatoria_con
 
 export async function updateLiberatoria({liberatoria_consegnata, id}){
   const{rows} = await pool.query(
-   `
-      UPDATE giurati 
-      SET liberatoria_consegnata = $1 
-      WHERE id_utente = $2 
-      RETURNING *;
-    `,
+   `UPDATE giurati 
+    SET liberatoria_consegnata = $1 
+    WHERE id_utente = $2 
+    RETURNING *;`,
     [liberatoria_consegnata, id]
-  )
+  );
   return rows;
 }
 
-export async function deletePersona(id) {
-  const { rowCount } = await pool.query(
-    'DELETE FROM persone WHERE id = $1',
-    [id]
-  );
-  return rowCount > 0; 
-}
-
-export async function deleteGiurato(id) {
-  const { rowCount } = await pool.query(
-    'DELETE FROM giurati WHERE id_utente = $1',
-    [id]
-  );
-  return rowCount > 0; 
-}
-
-export async function eliminaAccompagnatore(id) {
-  const { rowCount } = await pool.query(
-    'DELETE FROM accompagnatori WHERE id = $1',
-    [id]
-  );
-  return rowCount > 0; 
+export async function modificaGiurato(id, {tipo_giudice, tipo_partecipazione, emittente, mezzo_di_informazione} ){
+  const{rows} = await pool.query(
+     `UPDATE giurati 
+      SET tipo_giuria = $1, partecipazione = $2, emittente = $3, mezzo_di_informazione = $4 
+      WHERE id_utente = $5`,
+     [tipo_giudice, tipo_partecipazione, emittente, mezzo_di_informazione, id]
+   );
+  return rows;
 }
 
 export async function elencoGiurati(){
@@ -139,6 +135,10 @@ export async function trovaGiuratoPerIDutente(id_utente){
   );
   return rows[0];
 }
+
+// ==========================================
+// SEZIONE 4: ACCOMPAGNATORI E OSPITI GRUPPO
+// ==========================================
 
 export async function creaAccompagnatore({ nome, cognome, id_persona }){
   const {rows} = await pool.query(
@@ -174,14 +174,10 @@ export async function elencoAccompagnatori() {
 
 export async function elencoAccompagnatoriPerIDPersona(id_persona) {
   const { rows } = await pool.query(`
-    SELECT
-      id,
-      nome, 
-      cognome 
+    SELECT id, nome, cognome 
     FROM accompagnatori 
     WHERE id_persona = $1
   `,[id_persona]);
-  
   return rows;
 }
 
@@ -197,7 +193,7 @@ export async function creaMembroOspite({ id_gruppo, nome, cognome }) {
 
 export async function elencaMembroOspitePerCapoGruppoID(id_gruppo) {
   const { rows } = await pool.query(
-    `SELECT  nome, cognome
+    `SELECT id, nome, cognome
     FROM membri_ospiti
     WHERE id_gruppo = $1`,
     [id_gruppo]
@@ -216,7 +212,7 @@ export async function elencoOspiti() {
       ) as membri
      FROM persone p
      LEFT JOIN membri_ospiti m ON p.id = m.id_gruppo
-     WHERE p.ruolo = 'ospite'  -- <-- DEVE ESSERE 'ospite' (SINGOLARE)
+     WHERE p.ruolo = 'ospite'
      GROUP BY p.id
      ORDER BY p.cognome, p.nome`
   );
@@ -233,18 +229,10 @@ export async function elencoTuttiMembriOspiti() {
   return rows;
 }
 
-export async function modificaGiurato(id, {tipo_giudice, tipo_partecipazione, emittente, mezzo_di_informazione} ){
-   const{rows} = await pool.query(
-      `UPDATE giurati 
-       SET tipo_giuria = $1, partecipazione = $2, emittente = $3, mezzo_di_informazione = $4 
-       WHERE id_utente = $5`,
-      [tipo_giudice, tipo_partecipazione, emittente, mezzo_di_informazione, id]
-    );
+// ==========================================
+// SEZIONE 5: MODIFICHE ACCOUNT E GENERALI
+// ==========================================
 
-   return rows;
-}
-
-// Aggiorna l'account base di una persona (es. Runner o Staff Logistica)
 export async function modificaAccountPersona(id, dati) {
   const client = await pool.connect();
   try {
@@ -277,7 +265,6 @@ export async function modificaAccountPersona(id, dati) {
   }
 }
 
-// Aggiorna i dati di un Accompagnatore
 export async function modificaAccompagnatore(id, { nome, cognome, id_persona }) {
   const { rows } = await pool.query(
     `UPDATE accompagnatori 
@@ -289,7 +276,6 @@ export async function modificaAccompagnatore(id, { nome, cognome, id_persona }) 
   return rows[0];
 }
 
-// Aggiorna i dati dell'account Leader di un Gruppo Ospite
 export async function modificaOspiteLeader(id, dati) {
   const client = await pool.connect();
   try {
@@ -322,34 +308,134 @@ export async function modificaOspiteLeader(id, dati) {
   }
 }
 
-// Elimina un singolo membro extra da un gruppo ospiti
-export async function eliminaMembroOspite(id) {
-  const { rowCount } = await pool.query(
-    'DELETE FROM membri_ospiti WHERE id = $1',
-    [id]
-  );
-  return rowCount > 0;
-}
-
 export async function rubricaCompleta() {
   const { rows } = await pool.query(`
     SELECT username, nome, cognome
     FROM persone
-    
     UNION ALL
-    
     SELECT p.username, a.nome, a.cognome 
     FROM accompagnatori a 
     JOIN persone p ON a.id_persona = p.id
-    
     UNION ALL
-    
     SELECT p.username, m.nome, m.cognome
     FROM membri_ospiti m 
     JOIN persone p ON m.id_gruppo = p.id
-    
     ORDER BY nome, cognome
   `);
   return rows;
 }
 
+// ==========================================
+// SEZIONE 6: ALTRI RIMBORSI E SPESE EXTRA
+// ==========================================
+
+export async function trovaAltriRimborsiPerUtenteID(id_utente) {
+  // CORREZIONE APPLICATA: COALESCE dà priorità ad accompagnatore e membro ospite. 
+  // Prima se un accompagnatore aveva una spesa, ma id_utente era valorizzato col leader, 
+  // la query mostrava sempre il nome del leader ignorando l'accompagnatore.
+  const query = `
+    SELECT ar.*,
+           COALESCE(a.nome, m.nome, p.nome) AS nome_passeggero,
+           COALESCE(a.cognome, m.cognome, p.cognome) AS cognome_passeggero
+    FROM altri_rimborsi ar
+    LEFT JOIN persone p ON ar.id_utente = p.id
+    LEFT JOIN accompagnatori a ON ar.id_accompagnatore = a.id
+    LEFT JOIN membri_ospiti m ON ar.id_membro_ospite = m.id
+    WHERE ar.id_utente = $1
+       OR ar.id_accompagnatore IN (SELECT id FROM accompagnatori WHERE id_persona = $1)
+       OR ar.id_membro_ospite IN (SELECT id FROM membri_ospiti WHERE id_gruppo = $1)
+    ORDER BY ar.id ASC;
+  `;
+  const { rows } = await pool.query(query, [id_utente]);
+  return rows;
+}
+
+export async function aggiornaStatoAltroRimborso(id, rimborsato) {
+  const query = `UPDATE altri_rimborsi SET rimborsato = $1 WHERE id = $2 RETURNING *`;
+  const { rows } = await pool.query(query, [rimborsato, id]);
+  return rows[0];
+}
+
+export async function aggiungiAltroRimborso(dati) {
+  const query = `
+    INSERT INTO altri_rimborsi (id_utente, id_accompagnatore, id_membro_ospite, descrizione, importo, rimborsato)
+    VALUES ($1, $2, $3, $4, $5, false)
+    RETURNING *;
+  `;
+  const valori = [
+    dati.id_utente, 
+    dati.id_accompagnatore || null, 
+    dati.id_membro_ospite || null, 
+    dati.descrizione, 
+    dati.importo
+  ];
+  const { rows } = await pool.query(query, valori);
+  return rows[0];
+}
+
+// ==========================================
+// SEZIONE 7: CANCELLAZIONI (DELETE)
+// ==========================================
+
+export async function deletePersona(id) {
+  const { rowCount } = await pool.query('DELETE FROM persone WHERE id = $1', [id]);
+  return rowCount > 0; 
+}
+
+export async function deleteGiurato(id) {
+  const { rowCount } = await pool.query('DELETE FROM giurati WHERE id_utente = $1', [id]);
+  return rowCount > 0; 
+}
+
+export async function eliminaAccompagnatore(id) {
+  const { rowCount } = await pool.query('DELETE FROM accompagnatori WHERE id = $1', [id]);
+  return rowCount > 0; 
+}
+
+export async function eliminaMembroOspite(id) {
+  const { rowCount } = await pool.query('DELETE FROM membri_ospiti WHERE id = $1', [id]);
+  return rowCount > 0;
+}
+
+export async function riepilogoRimborsi() {
+  const query = `
+    WITH TicketUserMapping AS (
+        SELECT b.id, b.costo, b.stato, b.da_rimborsare_ospite,
+               COALESCE(b.id_utente, a.id_persona, m.id_gruppo) AS id_utente_principale
+        FROM biglietti b
+        LEFT JOIN accompagnatori a ON b.id_accompagnatore = a.id
+        LEFT JOIN membri_ospiti m ON b.id_membro_ospite = m.id
+    ),
+    AlloggiUserMapping AS (
+        SELECT o.id, c.costo_per_notte, o.da_rimborsare,
+               COALESCE(o.id_persona, a.id_persona) AS id_utente_principale
+        FROM occupazione_alloggio o
+        JOIN camera c ON o.id_camera = c.id
+        LEFT JOIN accompagnatori a ON o.id_accompagnatore = a.id
+    ),
+    ExtraUserMapping AS (
+        SELECT ar.id, ar.importo, ar.rimborsato,
+               COALESCE(ar.id_utente, a.id_persona, m.id_gruppo) AS id_utente_principale
+        FROM altri_rimborsi ar
+        LEFT JOIN accompagnatori a ON ar.id_accompagnatore = a.id
+        LEFT JOIN membri_ospiti m ON ar.id_membro_ospite = m.id
+    ),
+    UtentiConTotali AS (
+        SELECT 
+            p.id, p.username, p.nome, p.cognome, p.ruolo,
+            (SELECT COALESCE(SUM(costo), 0) FROM TicketUserMapping WHERE id_utente_principale = p.id AND (stato = 'rimborso_richiesto' OR (da_rimborsare_ospite = true AND stato != 'rimborso_ottenuto'))) +
+            (SELECT COALESCE(SUM(costo_per_notte), 0) FROM AlloggiUserMapping WHERE id_utente_principale = p.id AND da_rimborsare = true) +
+            (SELECT COALESCE(SUM(importo), 0) FROM ExtraUserMapping WHERE id_utente_principale = p.id AND rimborsato = false) 
+            AS totale_da_rimborsare,
+            (SELECT COALESCE(SUM(costo), 0) FROM TicketUserMapping WHERE id_utente_principale = p.id AND stato = 'rimborso_ottenuto') +
+            (SELECT COALESCE(SUM(importo), 0) FROM ExtraUserMapping WHERE id_utente_principale = p.id AND rimborsato = true) 
+            AS totale_completato
+        FROM persone p
+    )
+    SELECT * FROM UtentiConTotali 
+    WHERE totale_da_rimborsare > 0 OR totale_completato > 0
+    ORDER BY totale_da_rimborsare DESC, cognome ASC, nome ASC;
+  `;
+  const { rows } = await pool.query(query);
+  return rows;
+}

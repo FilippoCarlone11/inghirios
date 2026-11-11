@@ -218,10 +218,12 @@ export async function trovaAlloggioPerUtenteID(id_persona) {
       a.indirizzo,
       c.id AS id_camera,
       c.posti_letto,
+      c.costo_per_notte,
       o.id AS id_occupazione,
       o.data,
       o.id_persona,
-      o.id_accompagnatore
+      o.id_accompagnatore,
+      o.da_rimborsare
     FROM occupazione_alloggio o
     JOIN camera c ON o.id_camera = c.id
     JOIN alloggio a ON c.id_alloggio = a.id
