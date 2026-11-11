@@ -292,3 +292,22 @@ export async function aggiornaRimborsoNotte(da_rimborsare, id) {
   );
   return rows[0];
 }
+
+export async function registroContabileAlloggi() {
+  const query = `
+    SELECT
+      o.id AS id_occupazione, o.data, o.da_rimborsare,
+      c.id AS id_camera, c.costo_per_notte,
+      a.nome AS nome_alloggio,
+      COALESCE(p.nome, acc.nome) AS nome_ospite, 
+      COALESCE(p.cognome, acc.cognome) AS cognome_ospite
+    FROM occupazione_alloggio o
+    JOIN camera c ON o.id_camera = c.id
+    JOIN alloggio a ON c.id_alloggio = a.id
+    LEFT JOIN persone p ON o.id_persona = p.id
+    LEFT JOIN accompagnatori acc ON o.id_accompagnatore = acc.id
+    ORDER BY o.data ASC, nome_ospite ASC;
+  `;
+  const { rows } = await pool.query(query);
+  return rows;
+}

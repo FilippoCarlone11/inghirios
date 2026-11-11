@@ -48,9 +48,9 @@ const GRUPPI = [
       it: 'Contabilità', 
       Icona: Calculator,
       subItems: [
-        { to: '/gestione-rimborsi', sardo: 'Rimbursos', it: 'Rimborsi', Icona: Wallet},
-        { to: '/contabilita/alloggi', sardo: 'Contos Aposentos', it: 'Alloggi', Icona: BedDouble, disabled: true },
-        { to: '/contabilita/biglietti', sardo: 'Contos Billetes', it: 'Biglietti', Icona: Ticket, disabled: true },
+        { to: '/contabilita-rimborsi', sardo: 'Rimbursos', it: 'Rimborsi', Icona: Wallet},
+        { to: '/contabilita-alloggi', sardo: 'Contos Aposentos', it: 'Alloggi', Icona: BedDouble },
+        { to: '/contabilita-biglietti', sardo: 'Contos Billetes', it: 'Biglietti', Icona: Ticket },
         { to: '/contabilita/altro', sardo: 'Àteru', it: 'Altro', Icona: Wallet, disabled: true }
       ]
     }

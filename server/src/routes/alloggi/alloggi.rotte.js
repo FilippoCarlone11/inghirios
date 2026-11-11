@@ -18,7 +18,7 @@ import {
   trovaAlloggioPerUtenteID,
   aggiornaRimborsoNotte,
   eliminaOccupazione,
-  eliminaSoggiorno
+  eliminaSoggiorno, registroContabileAlloggi
 } from './alloggi.query.js';
 import { RUOLI } from '../../ruoli.js';
 
@@ -94,6 +94,14 @@ router.put('/modifica-camera/:id', richiediAuth, richiediRuolo(RUOLI.ADMIN), asy
     res.status(200).json(camera);
   } catch (err) {
     console.error("ERRORE MODIFICA CAMERA:", err);
+    next(err);
+  }
+});
+
+router.get('/registro-contabile', richiediAuth, richiediRuolo(RUOLI.ADMIN), async (req, res, next) => {
+  try {
+    res.json(await registroContabileAlloggi());
+  } catch (err) {
     next(err);
   }
 });
